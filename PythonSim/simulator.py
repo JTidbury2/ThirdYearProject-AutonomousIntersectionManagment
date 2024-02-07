@@ -1,0 +1,164 @@
+import copy
+import logging
+
+from vehicle import Vehicle
+from inter_manager import inter_manager
+from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v
+import random
+
+import numpy as np
+
+class Simulator:
+    _instance = None
+
+    @staticmethod 
+    def getInstance():
+        if Simulator._instance == None:
+            Simulator()
+        return Simulator._instance
+
+    def __init__(self):
+        if Simulator._instance != None:
+            raise Exception("This class is a singleton, but more than one objects are created.")
+        else:
+            Simulator._instance = self
+
+        self.timestep = 0
+        self.random_count = random.randint(25, 35)
+
+        # Generate vehicle counts for vehicle ID assignment
+        self.gen_veh_count = 0  
+        # For vehicle queues that are not placed in the simulation area for each lane, refer to the Meng2018Analysis article
+        self.point_queue_table = self.init_point_queue_table()
+        # Vehicles in the simulation area
+        self.all_veh = {
+            'Nap': [],
+            'Sap': [],
+            'Eap': [],
+            'Wap': [],
+            'Nex': [],
+            'Sex': [],
+            'Eex': [],
+            'Wex': [],
+            'ju': []
+        }
+        self.vehicleCount=0
+
+    def update(self):
+        self.timestep += 1
+        # print('Timestep: %d' % self.timestep)
+        to_switch_group = self.all_update_position()
+        # print('all_update_position')
+        self.update_group(to_switch_group)
+        # print('update_group(to_switch_group)')
+        self.gen_new_veh()
+        # print('gen_new_veh')
+        self.remove_out_veh()
+        # print('remove_out_veh')
+        self.update_all_control()
+        # print('update_all_control')
+        inter_manager.update()
+
+    def all_update_position(self):
+        '''For the vehicles in all_veh, update the location and record the vehicles whose grouping has changed'''
+        to_switch_group = []
+        for group, vehs in self.all_veh.items():
+            for veh in vehs:
+                switch_group = veh.update_position(veh_dt)
+                if switch_group:
+                    to_switch_group.append([veh, group])
+        return to_switch_group
+    
+    def update_group(self, to_switch_group):
+        '''Update the group of vehicles and sort them by location within the lane'''
+        for veh, old_group in to_switch_group:
+            if veh.zone == 'ju':
+                new_group = 'ju'
+            elif veh.zone == 'ex':
+                new_group = str(veh.track.ex_arm) + 'ex'
+            self.all_veh[new_group].append(veh)
+            self.all_veh[old_group].remove(veh)
+
+        for group, vehs in self.all_veh.items():
+            vehs.sort(key=lambda veh: veh.inst_x) # Sort by x from small to large
+
+    def remove_out_veh(self):
+        '''Delete vehicles that run out of the simulation area'''
+        to_delete = []
+        for group, vehs in self.all_veh.items():
+            if group[-2:] == 'ex':
+                for veh in vehs:
+                    if veh.inst_x >= arm_len + veh.veh_len_back:
+                        to_delete.append([group, veh])
+        for group, veh in to_delete:
+            self.all_veh[group].remove(veh)
+
+    def init_point_queue_table(self):
+        point_queue_table = {}
+        for i in range(NS_lane_count):
+            point_queue_table['N' + str(i)] = [] # #The elements in the list are the steering directions of each vehicle to be generated
+            point_queue_table['S' + str(i)] = []
+        for i in range(EW_lane_count):
+            point_queue_table['E' + str(i)] = []
+            point_queue_table['W' + str(i)] = []
+        return point_queue_table       
+
+    def gen_new_veh(self): 
+        '''Generate new vehicles in point_queue according to probability, and if feasible, put a vehicle into the simulation area'''
+        for ap_arm in 'NSEW': # Each import road
+            for turn_dir in 'lrt': # All directions
+                flows = veh_gen_rule_table[ap_arm + turn_dir]
+                for (lane, flow) in enumerate(flows):  # lane lane
+                    prob = flow / 3600 * veh_dt
+                    if np.random.rand() < prob:
+                        self.point_queue_table.get(ap_arm + str(lane),[]).insert(0, turn_dir)
+        for ap_arm_lane, queue in self.point_queue_table.items():
+            ap_arm = ap_arm_lane[0]
+            lane = int(ap_arm_lane[1])
+            latest_veh = None 
+            for some_veh in self.all_veh[ap_arm + 'ap']:
+                if some_veh.inst_lane == lane:
+                    latest_veh = some_veh
+                    break
+            if not latest_veh or (latest_veh.inst_x - (-arm_len)) > min_gen_hs:
+                if len(queue) > 0: 
+                    new_veh = self.make_veh(ap_arm, lane, queue.pop())
+                    self.all_veh[ap_arm + 'ap'].insert(0, new_veh)
+                    
+    def make_veh(self, ap_arm, ap_lane, turn_dir):
+        '''Create a vehicle object and return'''
+        self.vehicleCount+=1
+        new_veh_param = copy.deepcopy(veh_param)
+        new_veh_param['ap_arm'] = ap_arm
+        new_veh_param['ap_lane'] = ap_lane
+        new_veh_param['turn_dir'] = turn_dir
+        faultCar=False
+ 
+
+        if self.vehicleCount == self.random_count:
+            faultCar = True
+        new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar)
+        self.gen_veh_count += 1
+        return new_veh
+
+    def update_all_control(self):
+        '''All vehicles update their vehicle control status independently'''
+        for group, vehs in self.all_veh.items():
+            for (i, veh) in enumerate(vehs):
+                lead_veh = None
+                if group != 'ju': # entrance and exit
+                    for j in range(i+1, len(vehs)):
+                        if vehs[j].inst_lane == veh.inst_lane:
+                            lead_veh = vehs[j]
+                            break
+                else: # At the intersection, there is no concept of lanes here, but in order to prevent two cars with the same trajectory from colliding, they are still considered to be in the same lane.
+                    for j in range(i+1, len(vehs)):
+                        if vehs[j].track.ap_arm == veh.track.ap_arm and vehs[j].track.ap_lane == veh.track.ap_lane \
+                            and vehs[j].track.turn_dir == veh.track.turn_dir and vehs[j].track.ex_lane == veh.track.ex_lane:
+                            lead_veh = vehs[j]
+                            break
+                veh.update_control(lead_veh)
+
+
+
+    
