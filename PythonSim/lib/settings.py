@@ -4,6 +4,8 @@ disp_dt = 0.04
 simu_t = 600 # simulation time = 10 min
 time_wrap = 4
 
+########################## Simulation Crash Params##################### #####
+crashValues={"crashOccured": False}
 ########################## Scene parameter settings##################### #####
 lane_width = 3.5
 turn_radius = 6 # The American Urban Street Design Guidelines require that the corner radius of general urban road intersections should be 3~4.5m

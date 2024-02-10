@@ -3,7 +3,7 @@ import logging
 
 from vehicle import Vehicle
 from inter_manager import inter_manager
-from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v
+from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
 import random
 
 import numpy as np
@@ -137,7 +137,9 @@ class Simulator:
 
         if self.vehicleCount == self.random_count:
             faultCar = True
-        new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar)
+
+
+        new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar,crashValues["crashOccured"])
         self.gen_veh_count += 1
         return new_veh
 

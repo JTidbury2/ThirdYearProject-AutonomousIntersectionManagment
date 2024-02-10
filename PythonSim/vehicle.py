@@ -142,7 +142,7 @@ class HumanDrivenVehicle(BaseVehicle):
 
 class DresnerVehicle(BaseVehicle):
     '''corresponds to the self-driving car in Dresner's article and responds to DresnerManager'''
-    def __init__(self, id, veh_param, cf_param, init_v, timestep, faultyCar):
+    def __init__(self, id, veh_param, cf_param, init_v, timestep, faultyCar,crashHappenOnInit):
         super().__init__(id, veh_param, cf_param, init_v, timestep)
         #Control information
         self.reservation = None
@@ -151,7 +151,7 @@ class DresnerVehicle(BaseVehicle):
         self.optimism = True
         self.ap_acc_profile = None
         self.faultyCar = faultyCar
-        self.crashOccured=False
+        self.crashOccured=crashHappenOnInit
         self.faultTime=0
 
     def plan_arr(self):

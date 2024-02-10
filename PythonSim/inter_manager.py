@@ -1,7 +1,7 @@
 import math
 import logging
 
-from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time
+from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time,crashValues
 from map import Map, Track
 
 import numpy as np
@@ -108,6 +108,7 @@ class DresnerManager(BaseInterManager):
 
     def crash_occured(self):
         self.crash_happened=True
+        crashValues['crashOccured']=True
         ComSystem.I_broadcast({'type': 'crash'})
 
     
@@ -272,7 +273,7 @@ class DresnerManager(BaseInterManager):
                     else: # from bottom to top
                         y = seg[1][1] - seg_x
                         angle = 0
-                else: #Horizontal line
+                else: # Horizontal line
                     y = seg[1][1]
                     if seg[1][0] < seg[2][0]: # from left to right
                         x = seg[1][0] + seg_x
