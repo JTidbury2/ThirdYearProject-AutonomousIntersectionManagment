@@ -16,6 +16,10 @@ class BaseInterManager:
     def receive_V2I(self, sender, message):
         pass
 
+        
+    def check_for_collision(self,all_vehicles):
+        pass
+
 class TrafficLightManager(BaseInterManager):
     def __init__(self):
         super().__init__()
@@ -60,6 +64,7 @@ class DresnerManager(BaseInterManager):
     def __init__(self):
         super().__init__()
         self.res_grid = DresnerResGrid(0.5) # Write to settings?
+        self.running_grid = DresnerResGrid(0.1)
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
@@ -67,6 +72,97 @@ class DresnerManager(BaseInterManager):
     def update(self):
         super().update()
         self.res_grid.dispose_passed_time(self.timestep)
+
+    def get_grid_cells(self):
+        return self.running_grid.cells
+    
+    def get_grid_location(self,veh):
+        seg_idx = 0
+        for (i, end_x) in enumerate(veh.track.ju_shape_end_x):
+            if veh.inst_x > end_x: # is greater than the end point of the i-th segment, then it is in the (i+1) segment
+                seg_idx = i + 1
+                break
+        seg = veh.track.ju_track[seg_idx] #The shape of this segment
+        if seg_idx > 0:
+            seg_x = veh.inst_x - veh.track.ju_shape_end_x[seg_idx - 1] # The length of this segment
+        else:
+            seg_x = veh.inst_x
+        if seg[0] == 'line': # is a straight line
+            if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
+                x = seg[1][0]
+                if seg[1][1] < seg[2][1]: # from top to bottom
+                    y = seg[1][1] + seg_x
+                    angle = 180 # angle is the number of degrees of clockwise rotation compared to "head to north"
+                else: # from bottom to top
+                    y = seg[1][1] - seg_x
+                    angle = 0
+            else: # Horizontal line
+                y = seg[1][1]
+                if seg[1][0] < seg[2][0]: # from left to right
+                    x = seg[1][0] + seg_x
+                    angle = 90 
+                else: # from right to left
+                    x = seg[1][0] - seg_x
+                    angle = 270
+        else:  # circular curve
+            if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
+                rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                angle = 180 - rotation
+                x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+            else:
+                rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                angle = - rotation
+                x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+
+        # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
+        veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \
+            0.4, veh.inst_v * 0.1)
+        veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+        veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+        veh_dots_x_rt += x
+        veh_dots_y_rt += y
+        i, j = self.running_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+
+        return i, j 
+    
+    def check_for_collision(self,all_vehicles):
+        crashed_Vehicle_ID=[]
+        if self.crash_happened:
+            for veh in all_vehicles:
+                i,j = self.get_grid_location(veh)
+
+                for idx in range(len(i)):
+                    current_cell = self.get_grid_cells()[i[idx], j[idx], 0]  # Access the current cell
+                    
+                    if current_cell != -1 and current_cell != veh._id:  # If the cell is occupied by another vehicle
+                        if current_cell not in crashed_Vehicle_ID:  # If the occupying vehicle is not already in the list
+                            crashed_Vehicle_ID.append(current_cell)  # Add the occupying vehicle ID to the list
+
+                        if veh._id not in crashed_Vehicle_ID:  # If the current vehicle is not already in the list
+                            crashed_Vehicle_ID.append(veh._id)  # Add the current vehicle ID to the list
+
+                        reply_message = {'type': 'collision'}
+                        ComSystem.I2V(veh, reply_message)  # Send a collision message to the current vehicle
+
+                        # Assuming you have a way to send messages to other vehicles by ID
+                        ComSystem.I2V(self.get_vehicle_by_id(current_cell,all_vehicles), reply_message)  # Send a collision message to the occupying vehicle
+
+                    # Update the cell to indicate it's now occupied by the current vehicle
+                    self.get_grid_cells()[i[idx], j[idx], 0] = veh._id
+            self.running_grid.reset_grid()
+        return crashed_Vehicle_ID
+    
+    def get_vehicle_by_id(self,veh_id,all_vehicles):
+        for veh in all_vehicles:
+            if veh._id == veh_id:
+                return veh
+        return None
+            
+
+        
+        
 
     def receive_V2I(self, sender, message):
         if message['type'] == 'request':
@@ -251,11 +347,11 @@ class DresnerManager(BaseInterManager):
 
             
     def check_cells_stepwise(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc):
-        t = message['arr_t']
-        v = message['arr_v']
-        x_1d = 0
-        a_idx = 0
-        seg_idx = 0
+        t = message['arr_t'] #Currtent time
+        v = message['arr_v'] #Current speed
+        x_1d = 0 # One dimensional positon along junciton path
+        a_idx = 0 # Acceleration index
+        seg_idx = 0 # Segment index
 
         while x_1d <= ju_shape_end_x[-1]:
             # Calculate the vehicle xy coordinates and direction
@@ -355,6 +451,9 @@ class DresnerResGrid:
 
         self.cells = - np.ones(shape=(self.i_n, self.j_n, int(20/veh_dt)), dtype=np.int16)
         self.ex_lane_record = self.init_ex_lane_record() # This is to avoid collision at the exit lane. No car can arrive within a certain period of time before each car arrives.
+
+    def reset_grid(self):
+        self.cells = - np.ones(shape=(self.i_n, self.j_n, int(20/veh_dt)), dtype=np.int16)
 
     def xy_to_ij(self, x_arr, y_arr):
         '''

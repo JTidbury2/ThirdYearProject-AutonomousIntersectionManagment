@@ -25,6 +25,7 @@ class Simulator:
 
         self.timestep = 0
         self.random_count = random.randint(25, 35)
+        self.crash_count=0
 
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
@@ -45,6 +46,7 @@ class Simulator:
         self.vehicleCount=0
 
     def update(self):
+        self.check_for_collisions()
         self.timestep += 1
         # print('Timestep: %d' % self.timestep)
         to_switch_group = self.all_update_position()
@@ -57,7 +59,16 @@ class Simulator:
         # print('remove_out_veh')
         self.update_all_control()
         # print('update_all_control')
+
         inter_manager.update()
+
+    def check_for_collisions(self):
+        crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
+        
+        self.crash_count= len(crashed_vehicles)
+        if self.crash_count>0:
+            print(crashed_vehicles)
+        
 
     def all_update_position(self):
         '''For the vehicles in all_veh, update the location and record the vehicles whose grouping has changed'''

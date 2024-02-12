@@ -153,6 +153,7 @@ class DresnerVehicle(BaseVehicle):
         self.faultyCar = faultyCar
         self.crashOccured=crashHappenOnInit
         self.faultTime=0
+        self.collidedCar=False
 
     def plan_arr(self):
         '''According to the maximum arr_v, the earliest planned arrival time and speed of arr_t. Because only the leading car in a lane can plan this, so as long as the reservation is obtained, the plan can definitely be executed'''
@@ -269,6 +270,11 @@ class DresnerVehicle(BaseVehicle):
                 print(f"Faulty vehicle {self._id} will crash at time {self.faultTime}")
         elif message['type'] == 'reject':
             self.timeout = message['timeout']
+        elif message["type"] =="collision":
+            self.crashOccured=True
+            self.collidedCar=True
+            self.inst_a=0
+            self.inst_v=0
 
     def receive_broadcast(self, message):
         if message["type"] =="crash":
