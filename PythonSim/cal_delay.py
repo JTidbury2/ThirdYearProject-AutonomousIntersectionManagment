@@ -8,22 +8,42 @@ import matplotlib.pyplot as plt
 def cal_metrics(fname):
     file = open(fname)
     reader = csv.reader(file)
-    longest_crash_list = "S"
+    
 
     # The columns are start_time, ju_track_len, removed_time, is_removed
     veh_info_table = - np.ones((2000, 4))
+    longest_crash_list = []  # Initialize as an empty list
+
     for i, row in enumerate(reader):
+        print(row)
         if i == 0 or row[0].startswith('[') or row[0].startswith('p'):
             continue
         if row[0].startswith('update_title_pos'):
             break
-        if row[0].startswith("Vehicle") or row[0].startswith("Faulty") :
+        if row[0].startswith("Vehicle") or row[0].startswith("Faulty"):
             continue
         if row[0].startswith("crashed_Vehicle_ID"):
-            temp=row[:].split(':')[1]
-            if len(temp)>len(longest_crash_list):
-                longest_crash_list=temp
-            continue
+                print(row)
+                # Initialize an empty list to hold vehicle IDs for this row
+                crash_list = []
+                
+                # Loop through each element in the row
+                for element in row:
+                    if element.startswith("crashed_Vehicle_ID"):
+                        # For the first element, split at ':' and take the part after it, strip '[' and convert to int
+                        first_id = element.split(':')[1].strip('[').strip(']')
+                        if first_id == '' :
+                            continue
+                        crash_list.append(int(first_id))
+                    else:
+                        # For subsequent elements, simply strip whitespace and convert to int
+                        crash_list.append(int(element.strip().strip('[').strip(']')))
+
+                # Update longest_crash_list if the current list is longer
+                if len(crash_list) > len(longest_crash_list):
+                    longest_crash_list = crash_list
+
+                continue  # Continue to the next row
 
         t, veh_id, zone, x = int(row[0]), int(row[1]), row[2].strip(), float(row[4])
         if t >= simu_t / veh_dt:
