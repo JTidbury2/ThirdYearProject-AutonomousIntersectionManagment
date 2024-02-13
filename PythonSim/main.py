@@ -1,6 +1,7 @@
 import sys
 import time
 import logging
+import os
 
 import lib.settings
 
@@ -9,9 +10,17 @@ def exec_simulation():
     from my_main_window import MyMainWindow
     from cal_delay import cal_metrics
 
+    # Define the log directory and file name
+    log_dir = 'log'
+    log_fname = os.path.join(log_dir, 'log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S"))
+
+    # Check if the log directory exists, and create it if it doesn't
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     log_fname = 'log/log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S")
-    # logging.basicConfig(filename=log_fname, format='%(message)s', level=logging.DEBUG)
-    # logging.debug('t, veh._id, zone, lane, x, v, a')
+    logging.basicConfig(filename=log_fname, format='%(message)s', level=logging.DEBUG)
+    logging.debug('t, veh._id, zone, lane, x, v, a')
     print(log_fname)
 
     app = QApplication(sys.argv)
@@ -21,10 +30,10 @@ def exec_simulation():
 
     # print('Simulation finished, banana')
 
-    # metrics = cal_metrics(log_fname)
-    # for key, value in metrics.items():
-    #     print(key, '=', value)
-    # print('')
+    metrics = cal_metrics(log_fname)
+    for key, value in metrics.items():
+        print(key, '=', value)
+    print('')
 
 if __name__ == '__main__':
     # Adjustment plan

@@ -152,6 +152,8 @@ class DresnerManager(BaseInterManager):
                     # Update the cell to indicate it's now occupied by the current vehicle
                     self.get_grid_cells()[i[idx], j[idx], 0] = veh._id
             self.running_grid.reset_grid()
+
+        logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
         return crashed_Vehicle_ID
     
     def get_vehicle_by_id(self,veh_id,all_vehicles):

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 def cal_metrics(fname):
     file = open(fname)
     reader = csv.reader(file)
+    longest_crash_list = "S"
 
     # The columns are start_time, ju_track_len, removed_time, is_removed
     veh_info_table = - np.ones((2000, 4))
@@ -16,6 +17,14 @@ def cal_metrics(fname):
             continue
         if row[0].startswith('update_title_pos'):
             break
+        if row[0].startswith("Vehicle") or row[0].startswith("Faulty") :
+            continue
+        if row[0].startswith("crashed_Vehicle_ID"):
+            temp=row[:].split(':')[1]
+            if len(temp)>len(longest_crash_list):
+                longest_crash_list=temp
+            continue
+
         t, veh_id, zone, x = int(row[0]), int(row[1]), row[2].strip(), float(row[4])
         if t >= simu_t / veh_dt:
             break
@@ -50,6 +59,7 @@ def cal_metrics(fname):
     delay = actual_time - ideal_time
     metrics['avg_delay'] = np.mean(delay)
     metrics['max_delay'] = np.max(delay)
+    metrics['longest_crash_list'] = longest_crash_list  
 
     plt.plot(delay)
     plt.xlabel('Vehicle Id')
