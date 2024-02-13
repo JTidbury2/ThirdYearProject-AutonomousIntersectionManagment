@@ -156,6 +156,9 @@ class DresnerManager(BaseInterManager):
         logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
         return crashed_Vehicle_ID
     
+    def check_for_collision_noCars(self):
+        return self.crash_happened
+    
     def get_vehicle_by_id(self,veh_id,all_vehicles):
         for veh in all_vehicles:
             if veh._id == veh_id:

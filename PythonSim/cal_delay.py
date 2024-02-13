@@ -15,7 +15,7 @@ def cal_metrics(fname):
     longest_crash_list = []  # Initialize as an empty list
 
     for i, row in enumerate(reader):
-        print(row)
+        
         if i == 0 or row[0].startswith('[') or row[0].startswith('p'):
             continue
         if row[0].startswith('update_title_pos'):
@@ -23,7 +23,7 @@ def cal_metrics(fname):
         if row[0].startswith("Vehicle") or row[0].startswith("Faulty"):
             continue
         if row[0].startswith("crashed_Vehicle_ID"):
-                print(row)
+                
                 # Initialize an empty list to hold vehicle IDs for this row
                 crash_list = []
                 
