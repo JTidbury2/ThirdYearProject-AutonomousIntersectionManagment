@@ -21,7 +21,7 @@ veh_param = {
     'veh_len_front': 1, # The distance from the front bumper to the front axle
     'max_v': 33,
     'max_acc': 3,
-    'max_dec': 6,
+    'max_dec': 4,
     'ap_arm': None,
     'ap_lane': None,
     'turn_dir': None

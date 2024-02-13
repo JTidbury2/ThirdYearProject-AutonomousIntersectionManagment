@@ -81,7 +81,8 @@ class Simulator:
 
 
         if self.crash_count>0:
-            print(crashed_vehicles)
+            # print(crashed_vehicles)
+            pass
 
     def check_for_finish(self):
         if self.timestep >= self.crash_time:

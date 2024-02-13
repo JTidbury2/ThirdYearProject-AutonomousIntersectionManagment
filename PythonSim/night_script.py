@@ -6,36 +6,53 @@ def run_simulation(simulation_cmd):
     result = subprocess.run(simulation_cmd, stdout=subprocess.PIPE, text=True, shell=True)
     output = result.stdout
 
-    # Extract metrics from the output
-    crash_list_pattern = re.compile(r'longest_crash_list = (\[.*?\])')
-    crash_list_match = crash_list_pattern.search(output)
-    if crash_list_match:
-        crash_list_str = crash_list_match.group(1)
-        crash_list = eval(crash_list_str)  # Convert string representation of list to actual list
-        crash_list_length = len(crash_list)
-    else:
-        crash_list_length = 0
-
-    return {
-        'crash_list_length': crash_list_length,
-        # Add other metrics extraction as needed
+    # Initialize metrics
+    metrics = {
+        'crash_list_length': 0,
+        'avg_delay': 0,
+        'max_delay': 0,
+        'actual_total_flow': 0,
     }
 
+    # Extract metrics from the output
+    crash_list_pattern = re.compile(r'longest_crash_list = (\[.*?\])')
+    avg_delay_pattern = re.compile(r'avg_delay = ([\d\.]+)')
+    max_delay_pattern = re.compile(r'max_delay = ([\d\.]+)')
+    actual_total_flow_pattern = re.compile(r'actual_total_flow = ([\d\.]+)')
+
+    # Process patterns
+    for pattern, key in [(crash_list_pattern, 'crash_list_length'),
+                         (avg_delay_pattern, 'avg_delay'),
+                         (max_delay_pattern, 'max_delay'),
+                         (actual_total_flow_pattern, 'actual_total_flow')]:
+        match = pattern.search(output)
+        if match:
+            if key == 'crash_list_length':
+                crash_list = eval(match.group(1))  # Convert string representation of list to actual list
+                metrics[key] = len(crash_list)
+            else:
+                metrics[key] = float(match.group(1))
+
+    return metrics
+
 def main(simulation_cmd, num_runs):
-    total_crash_list_length = 0
-    # Initialize variables for other metrics as needed
+    # Initialize total metrics
+    total_metrics = {
+        'crash_list_length': 0,
+        'avg_delay': 0,
+        'max_delay': 0,
+        'actual_total_flow': 0,
+    }
 
     for _ in range(num_runs):
         metrics = run_simulation(simulation_cmd)
-        total_crash_list_length += metrics['crash_list_length']
-        # Update totals for other metrics as needed
+        for key in total_metrics:
+            total_metrics[key] += metrics[key]
 
-    # Calculate averages
-    avg_crash_list_length = total_crash_list_length / num_runs
-    # Calculate averages for other metrics as needed
-
-    print(f'Average crash list length over {num_runs} runs: {avg_crash_list_length}')
-    # Print averages for other metrics as needed
+    # Calculate and print averages
+    for key, total in total_metrics.items():
+        average = total / num_runs
+        print(f'Average {key.replace("_", " ")} over {num_runs} runs: {average}')
 
 if __name__ == '__main__':
     simulation_command = 'python main.py Dresner 10000'
