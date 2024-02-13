@@ -214,7 +214,8 @@ class DresnerVehicle(BaseVehicle):
                     'max_acc': self.max_acc,
                     'max_dec': self.max_dec
                 })
-            if self.reservation and not self.crashOccured:
+            if self.reservation :
+                # and and not self.crashOccured
                 # If the reservation is successful, the acceleration will be executed according to the previously calculated plan.
                 for t, a in self.ap_acc_profile:
                     if self.timestep >= t:
