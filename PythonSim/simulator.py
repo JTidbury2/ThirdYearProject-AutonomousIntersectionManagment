@@ -77,7 +77,7 @@ class Simulator:
         
         self.crash_count= len(crashed_vehicles)
         if inter_manager.check_for_collision_noCars() and self.crash_time==2000:
-            self.crash_time=self.timestep+100
+            self.crash_time=self.timestep+200
 
 
         if self.crash_count>0:

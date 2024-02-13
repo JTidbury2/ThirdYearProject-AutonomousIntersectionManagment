@@ -59,6 +59,8 @@ class TrafficLightManager(BaseInterManager):
         
     def receive_V2I(self, sender, message):
         return 
+    
+
 
 class DresnerManager(BaseInterManager):
     def __init__(self):
@@ -436,6 +438,67 @@ class DresnerManager(BaseInterManager):
         self.res_grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
         return True
     
+# class GeneticReordering():
+#     def __init__(self):
+#         self.default_processing_interval = 2.0
+#         self.
+
+    
+class GeneticManager(DresnerManager):
+    
+    def receive_V2I(self, sender, message):
+        if message['type'] == 'request':
+            if self.crash_happened:
+                reply_message = {
+                    'type': 'reject',
+                    'timeout': 1
+                }
+                ComSystem.I2V(sender, reply_message)
+            reservation = self.check_request(message)
+            if reservation:
+                reply_message = {
+                    'type': 'confirm',
+                    'reservation': reservation
+                }
+                self.res_registery[message['veh_id']] = reservation['res_id']
+                ComSystem.I2V(sender, reply_message)
+            else: 
+                reply_message = {
+                    'type': 'reject',
+                    'timeout': 1
+                }
+                ComSystem.I2V(sender, reply_message)
+        elif message['type'] == 'change-request':
+            pass
+        elif message['type'] == 'cancel':
+            # process cancel with P
+            pass
+        elif message['type'] == 'done':
+            # record any statistics supplied in message
+            # process cancel with P
+            self.res_registery.pop(message['veh_id']) # dict.pop(key)返回value并删除
+            ComSystem.I2V(sender, {
+                'type': 'acknowledge',
+                'res_id': message['res_id']
+            })
+        elif message["type"]== "fault":
+            self.crash_occured()
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class DresnerResGrid:
     '''a grid representation of intersection area'''
     def __init__(self, cell_size):
