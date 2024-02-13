@@ -38,6 +38,13 @@ class MyPaintCanvas(QWidget):
 
     def update_traffic(self):
         Simulator.getInstance().update()
+        if Simulator.getInstance().get_sim_over():
+            print('Simulation finished',Simulator.getInstance().get_sim_over())
+            self.veh_timer.stop()
+            self.disp_timer.stop()
+            self.mainw.close()
+
+
 
     def paintEvent(self, event): # Called every time disp_timer timeout, redraw
         qp = QPainter(self)

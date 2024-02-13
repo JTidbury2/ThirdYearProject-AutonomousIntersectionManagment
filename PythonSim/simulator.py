@@ -16,6 +16,9 @@ class Simulator:
         if Simulator._instance == None:
             Simulator()
         return Simulator._instance
+    
+    def get_sim_over(self):
+        return self.sim_over
 
     def __init__(self):
         if Simulator._instance != None:
@@ -26,6 +29,8 @@ class Simulator:
         self.timestep = 0
         self.random_count = random.randint(25, 35)
         self.crash_count=0
+        self.crash_time=2000
+        self.sim_over=False
 
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
@@ -62,12 +67,25 @@ class Simulator:
 
         inter_manager.update()
 
+        if self.check_for_finish():
+            #finsh the simulation
+            #insert code here 
+            self.sim_over=True
+
     def check_for_collisions(self):
         crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         
         self.crash_count= len(crashed_vehicles)
+        if self.crash_count>0 and self.crash_time==2000:
+            self.crash_time=self.timestep+100
+
+
         if self.crash_count>0:
             print(crashed_vehicles)
+
+    def check_for_finish(self):
+        if self.timestep >= self.crash_time:
+            return True
         
 
     def all_update_position(self):

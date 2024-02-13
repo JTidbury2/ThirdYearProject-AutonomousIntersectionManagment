@@ -19,10 +19,12 @@ def exec_simulation():
     window.show()
     app.exec_()
 
-    metrics = cal_metrics(log_fname)
-    for key, value in metrics.items():
-        print(key, '=', value)
-    print('')
+    # print('Simulation finished, banana')
+
+    # metrics = cal_metrics(log_fname)
+    # for key, value in metrics.items():
+    #     print(key, '=', value)
+    # print('')
 
 if __name__ == '__main__':
     # Adjustment plan
