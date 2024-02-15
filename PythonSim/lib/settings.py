@@ -3,6 +3,7 @@ veh_dt = 0.1
 disp_dt = 0.04
 simu_t = 600 # simulation time = 10 min
 time_wrap = 4
+# disp_dt = veh_dt / time_wrap
 
 ########################## Simulation Crash Params##################### #####
 crashValues={"crashOccured": False}

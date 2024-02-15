@@ -413,6 +413,10 @@ class DresnerManager(BaseInterManager):
             # Check whether all occupied grid points are empty
             if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
                 self.res_grid.cells[i, j, t_slice] = message['veh_id']
+                if message['veh_id']==1:
+                    print('i:',i)
+                    print('j:',j)
+                    print('t_slice:',t_slice)
             else:
                 # Planning failed, return False after clearing traces
                 self.res_grid.clear_veh_cell(message['veh_id'])
@@ -438,13 +442,81 @@ class DresnerManager(BaseInterManager):
         self.res_grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
         return True
     
-# class GeneticReordering():
-#     def __init__(self):
-#         self.default_processing_interval = 2.0
-#         self.
+class GeneticReordering():
+    def __init__(self, default_processing_interval_arg=2.0):
+        # The time period between the processing times.
+        self.default_processing_interval = 2.0
+        # The amount of lookahead (the period of time between the end time of the
+        # last processed batch and the target batch).
+        self.lookahead_time=3.0
+
+        self.batch_interval=self.default_processing_interval
+        self.next_processing_time=0.0
+        self.next_proposal_deadline=0.0
+        self.processing_interval=default_processing_interval_arg
+
+        def setInitialTime(self, initTime):
+            self.next_processing_time=initTime+self.processing_interval
+            self.next_proposal_deadline=self.next_processing_time
+        
+        def get_batch(current_time, queue):
+            # Assuming selectProposals and reorderProposals are defined elsewhere and work similarly to the Java version
+            proposals1 = self.select_proposals(current_time, queue)
+            proposals2 = self.reorder_proposals(proposals1)
+
+            global next_processing_time, next_proposal_deadline
+            self.next_processing_time = current_time + self.processing_interval
+            self.next_proposal_deadline = next_processing_time
+
+            return proposals2
+
+        def select_proposals(self, current_time, queue):
+            result = []
+
+            start_time = current_time + self.lookahead_time
+            end_time = start_time + self.batch_interval
+
+            for request in queue:
+                arrival_time = request['arr_t']  # Assuming get_arrival_time method exists in Proposal class
+
+                if arrival_time < end_time:
+                    result.append(request)
+                else:
+                    break
+
+            return result
+
+        def reorder_proposals(self, proposals):
+                # A partition of the proposals according to the road of the arrival lane.
+                partition = {}
+
+                for proposal in proposals:
+                    lane_id = proposal['arr_lane']  # Assuming this is equivalent to getArrivalLaneID
+
+                    if lane_id in partition:
+                        partition[lane_id].append(proposal)
+                    else:
+                        partition[lane_id] = [proposal]
+
+                # Combine the proposals according to the partition
+                result = []
+                for road_proposals in partition.values():
+                    result.extend(road_proposals)
+
+                return result
+
 
     
 class GeneticManager(DresnerManager):
+    def __init__(self):
+        super().__init__()
+        self.reordering_strategy = GeneticReordering()
+        self.queue = []
+        self.next_processing_time = 0.0
+        self.next_proposal_deadline = 0.0
+        self.processing_interval = 2.0
+        self.last_vin_in_batch = set()
+
     
     def receive_V2I(self, sender, message):
         if message['type'] == 'request':
@@ -483,6 +555,119 @@ class GeneticManager(DresnerManager):
             })
         elif message["type"]== "fault":
             self.crash_occured()
+
+    def geneticAct(self,timeStep):#
+        if self.base_policy.get_current_time() >= self.next_processing_time:
+            vin_in_batch = self.process_batch()
+            
+            # if IS_HIGHLIGHT_VEHICLE_IN_BATCH:
+            #     for vin in self.last_vin_in_batch:
+            #         Debug.remove_vehicle_color(vin)
+            #     for vin in vin_in_batch:
+            #         Debug.set_vehicle_color(vin, VEHICLE_IN_BATCH_COLOR)
+                
+                # self.last_vin_in_batch = vin_in_batch
+            
+            self.next_processing_time = self.reordering_strategy.get_next_processing_time()
+            self.next_proposal_deadline = self.reordering_strategy.get_next_proposal_deadline()
+
+            # After updating the proposal deadline, immediately confirm/reject
+            # the indexed proposal in the queue whose expiration time is before
+            # the new proposal deadline.
+            self.try_reserve_for_proposals_before_time(self.next_proposal_deadline)
+
+    def process_batch(self):
+        vin_in_batch = set()
+
+        current_time = self.base_policy.get_current_time()
+
+        # Ensure that no proposal in the queue is before the deadline
+        # This is a direct translation of the assert statement in Java
+        assert len(self.queue) == 0 or self.queue[0].get_proposal().get_arrival_time() >= self.next_proposal_deadline
+
+        # Retrieve the batch (the set of indexed proposals)
+        batch = self.reordering_strategy.get_batch(current_time, self.queue)
+
+        # Confirm or reject the proposals in the batch according to the new ordering
+        for i_proposal in batch:
+            self.try_reserve(i_proposal)
+            vin_in_batch.add(i_proposal.get_request().get_vin())
+
+        return vin_in_batch
+    
+
+    def try_reserve(self, i_proposal):
+        l = [i_proposal.get_proposal()]  # Create a list with the proposal
+        msg = i_proposal.get_request()
+        reserve_param = self.base_policy.find_reserve_param(msg, l)
+        
+        if reserve_param is not None:
+            self.base_policy.send_confirm_msg(msg['request_id'], reserve_param)
+            # Remove a set of indexed proposals (including the given one) from the queue
+            for i_proposal2 in i_proposal.get_proposal_group():
+                self.queue.remove(i_proposal2)  # Assuming queue supports direct removal
+        else:
+            # Remove the indexed proposal from the queue
+            self.queue.remove(i_proposal)
+            # Shrink the proposal group
+            ip_group = i_proposal.get_proposal_group()
+            if i_proposal in ip_group:
+                ip_group.remove(i_proposal)
+                # If the proposal group is empty, no proposal left for the request message
+                # and need to send the reject message
+                if not ip_group:
+                    self.base_policy.send_reject_msg(msg['vin'],
+                                                     msg['request_id'],
+                                                     'NO_CLEAR_PATH')  # Assuming 'NO_CLEAR_PATH' is a constant or enum value
+            else:  # The removal is unsuccessful
+                raise RuntimeError("BatchModeRequestHandler: Proposal Group error: unable to remove an indexed proposal.")
+            
+    def process_request_msg(self, msg):
+        vin = msg['veh_id']
+
+
+        # # If the vehicle has got a reservation already, reject it.
+        # if self.base_policy.has_reservation(vin):
+        #     self.base_policy.send_reject_msg(vin,
+        #                                      msg['request_id'],
+        #                                      'CONFIRMED_ANOTHER_REQUEST')  # Assuming this is a constant or an enum value
+        #     if self.requestSC is not None:
+        #         self.requestSC.incr_num_of_confirmed_another_request()
+        #     return
+
+        # First, remove the proposals of the vehicle (if any) in the queue.
+        self.remove_request_by_veh_id(vin)
+
+        current_time = self.base_policy.get_current_time()
+        proposals = msg['proposals']  # Assuming this key exists and contains a list of proposals
+
+        # Filter the proposals
+        filter_result = self.base_policy.standard_proposals_filter(proposals, current_time)
+
+        if filter_result.is_no_proposal_left():
+            # Reject immediately since the existing proposals of the vehicle have been removed from the queue.
+            self.base_policy.send_reject_msg(vin,
+                                             msg['request_id'],
+                                             filter_result.get_reason())
+            return
+
+        if self.is_all_proposals_late(msg):
+            # Immediately confirm/reject the remaining proposals.
+            reserve_param = self.base_policy.find_reserve_param(msg, filter_result.get_proposals())
+            if reserve_param is not None:
+                self.base_policy.send_confirm_msg(msg['request_id'], reserve_param)
+            else:
+                self.base_policy.send_reject_msg(vin, msg['request_id'], 'NO_CLEAR_PATH')
+            if self.requestSC is not None:
+                self.requestSC.incr_num_of_late_request()
+        else:
+            # Put the proposals in the queue and postpone the processing of these proposals.
+            self.put_proposals_into_queue(msg, current_time)
+            if self.requestSC is not None:
+                self.requestSC.incr_num_of_queued_request()
+
+    def remove_request_by_veh_id(self, vin):
+            self.queue = [request for request in self.queue if request['veh_id'] != vin]
     
 
 
