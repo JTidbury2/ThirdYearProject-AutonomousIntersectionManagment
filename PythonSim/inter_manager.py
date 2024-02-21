@@ -1,7 +1,7 @@
 import math
 import logging
 
-from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time,crashValues
+from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time,crashValues, veh_param,arm_v_lim
 from map import Map, Track
 
 import numpy as np
@@ -292,19 +292,24 @@ class DresnerManager(BaseInterManager):
             ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
             ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
             acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
-            exit_time = message['arr_t']  # Initialize exit time with the arrival time
+            exit_time_acc=0  # Initialize exit time with the arrival time
+            exit_time_const_v=0
+            exit_v_acc=0    
+            exit_v_const_v=0
 
             if acc_distance >= ju_shape_end_x[-1]: 
                 # Accelerate the whole process
                 acc_acc = [[message['arr_t'], message['max_acc']]]
                 # Estimate exit time assuming constant acceleration over the distance
-                exit_time += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                exit_time_acc  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                exit_velocity_acc = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
             else:
                 # Acceleration-constant speed
                 acc_time = (inter_v_lim - message['arr_v']) / message['max_acc']
                 constant_speed_distance = ju_shape_end_x[-1] - acc_distance
                 constant_speed_time = constant_speed_distance / inter_v_lim
-                exit_time += acc_time + constant_speed_time
+                exit_time_acc  += acc_time + constant_speed_time
+                exit_velocity_acc = inter_v_lim
 
                 acc_acc = [
                     [message['arr_t'], message['max_acc']], 
@@ -315,12 +320,14 @@ class DresnerManager(BaseInterManager):
                 acc_distance_c = (8**2 - message['arr_v']**2) / 2 / message['max_acc']
                 if acc_distance_c >= ju_shape_end_x[-1]: 
                     acc_const_v = [[message['arr_t'], message['max_acc']]]
-                    exit_time += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                    exit_time_const_v  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                    exit_velocity_const_v = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
                 else:
                     acc_time_c = (8 - message['arr_v']) / message['max_acc']
                     constant_speed_distance_c = ju_shape_end_x[-1] - acc_distance_c
                     constant_speed_time_c = constant_speed_distance_c / 8
-                    exit_time += acc_time_c + constant_speed_time_c
+                    exit_time_const_v  += acc_time_c + constant_speed_time_c
+                    exit_velocity_const_v = 8
 
                     acc_const_v = [
                         [message['arr_t'], message['max_acc']], 
@@ -330,7 +337,8 @@ class DresnerManager(BaseInterManager):
                 acc_const_v = [[message['arr_t'], 0]]
                 constant_speed_distance = ju_shape_end_x[-1]
                 constant_speed_time = constant_speed_distance / message['arr_v']
-                exit_time += constant_speed_time
+                exit_time_const_v += constant_speed_time
+                exit_velocity_const_v = message['arr_v']
 
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
                 return {
@@ -339,7 +347,7 @@ class DresnerManager(BaseInterManager):
                     'arr_t': message['arr_t'],
                     'arr_v': message['arr_v'],
                     'acc': acc_acc,
-                    'exit_time': exit_time  # Include the calculated exit time
+                    'exit_time': exit_time_acc  # Include the calculated exit time
                 }
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
                 return {
@@ -348,7 +356,7 @@ class DresnerManager(BaseInterManager):
                     'arr_t': message['arr_t'],
                     'arr_v': message['arr_v'],
                     'acc': acc_const_v,
-                    'exit_time': exit_time  # Include the calculated exit time
+                    'exit_time': exit_time_const_v   # Include the calculated exit time
                 }
         return None
 
@@ -668,6 +676,333 @@ class GeneticManager(DresnerManager):
 
     def remove_request_by_veh_id(self, vin):
             self.queue = [request for request in self.queue if request['veh_id'] != vin]
+
+    def check_request(self, message): 
+        ex_arm = Map.getInstance().get_ex_arm(message['arr_arm'], message['turn_dir'])
+        ex_lane_list = self.get_ex_lane_list(message['arr_arm'], message['turn_dir'], message['arr_lane'])
+        for ex_lane in ex_lane_list:
+            ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
+            ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
+            acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
+            exit_time = message['arr_t']  # Initialize exit time with the arrival time
+
+            if acc_distance >= ju_shape_end_x[-1]: 
+                # Accelerate the whole process
+                acc_acc = [[message['arr_t'], message['max_acc']]]
+                # Estimate exit time assuming constant acceleration over the distance
+                exit_time += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+            else:
+                # Acceleration-constant speed
+                acc_time = (inter_v_lim - message['arr_v']) / message['max_acc']
+                constant_speed_distance = ju_shape_end_x[-1] - acc_distance
+                constant_speed_time = constant_speed_distance / inter_v_lim
+                exit_time += acc_time + constant_speed_time
+
+                acc_acc = [
+                    [message['arr_t'], message['max_acc']], 
+                    [message['arr_t'] + acc_time, 0]
+                ]
+
+            if message['arr_v'] < inter_v_lim_min:
+                acc_distance_c = (8**2 - message['arr_v']**2) / 2 / message['max_acc']
+                if acc_distance_c >= ju_shape_end_x[-1]: 
+                    acc_const_v = [[message['arr_t'], message['max_acc']]]
+                    exit_time += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                else:
+                    acc_time_c = (8 - message['arr_v']) / message['max_acc']
+                    constant_speed_distance_c = ju_shape_end_x[-1] - acc_distance_c
+                    constant_speed_time_c = constant_speed_distance_c / 8
+                    exit_time += acc_time_c + constant_speed_time_c
+
+                    acc_const_v = [
+                        [message['arr_t'], message['max_acc']], 
+                        [message['arr_t'] + acc_time_c, 0]
+                    ]
+            else:
+                acc_const_v = [[message['arr_t'], 0]]
+                constant_speed_distance = ju_shape_end_x[-1]
+                constant_speed_time = constant_speed_distance / message['arr_v']
+                exit_time += constant_speed_time
+
+            if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
+                return {
+                    'res_id': 0,  # Todo: Generate a unique reservation ID
+                    'ex_lane': ex_lane,
+                    'arr_t': message['arr_t'],
+                    'arr_v': message['arr_v'],
+                    'acc': acc_acc,
+                    'exit_time': exit_time  # Include the calculated exit time
+                }
+            elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
+                return {
+                    'res_id': 0,  # Todo: Generate a unique reservation ID
+                    'ex_lane': ex_lane,
+                    'arr_t': message['arr_t'],
+                    'arr_v': message['arr_v'],
+                    'acc': acc_const_v,
+                    'exit_time': exit_time  # Include the calculated exit time
+                }
+        return None
+    
+    def check_cells_stepwise_boss(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,grid):
+        temp_flag = True
+        inital_t = message['arr_t']
+        message['inital_t'] = inital_t
+        loop_time = inital_t
+        while temp_flag:
+            result = self.check_cells_stepwise_time_increasing(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc,grid)
+            if result is not None:
+                return loop_time, ((loop_time-inital_t)+exit_time_acc) , exit_velocity_acc
+
+            result = self.check_cells_stepwise_time_increasing(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v,grid)
+            if result is not None:
+                return loop_time, ((loop_time-inital_t)+exit_time_const_v) , exit_velocity_const_v
+
+            loop_time += 1
+            message['arr_t'] = loop_time
+
+            
+
+    
+
+    def check_cells_stepwise_time_increasing(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc,grid):
+        start_t = message['arr_t'] #Currtent time
+        t = message['arr_t'] #Currtent time
+        v = message['arr_v'] #Current speed
+        x_1d = 0 # One dimensional positon along junciton path
+        a_idx = 0 # Acceleration index
+        seg_idx = 0 # Segment index
+
+        while x_1d <= ju_shape_end_x[-1]:
+            # Calculate the vehicle xy coordinates and direction
+            seg = ju_track[seg_idx]
+            if seg_idx > 0:
+                seg_x = x_1d - ju_shape_end_x[seg_idx - 1]  
+            else:
+                seg_x = x_1d
+            if seg[0] == 'line': # is a straight line
+                if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
+                    x = seg[1][0]
+                    if seg[1][1] < seg[2][1]: # from top to bottom
+                        y = seg[1][1] + seg_x
+                        angle = 180 # angle is the number of degrees of clockwise rotation compared to "head to north"
+                    else: # from bottom to top
+                        y = seg[1][1] - seg_x
+                        angle = 0
+                else: # Horizontal line
+                    y = seg[1][1]
+                    if seg[1][0] < seg[2][0]: # from left to right
+                        x = seg[1][0] + seg_x
+                        angle = 90 
+                    else: # from right to left
+                        x = seg[1][0] - seg_x
+                        angle = 270
+            else:  # circular curve
+                if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
+                    rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                    angle = 180 - rotation
+                    x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                    y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+                else:
+                    rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                    angle = - rotation
+                    x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                    y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+            
+            # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
+            veh_dots_x, veh_dots_y = self.gen_veh_dots(message['veh_wid'], message['veh_len'], message['veh_len_front'], \
+                0.4, v * 0.1)
+            veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+            veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+            veh_dots_x_rt += x
+            veh_dots_y_rt += y
+            
+            #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+            i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
+            while t_slice[0] >= self.grid.cells.shape[2]:
+                self.grid.add_time_dimension()
+            
+            # Check whether all occupied grid points are empty
+            if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
+                self.grid.cells[i, j, t_slice] = message['veh_id']
+                if message['veh_id']==1:
+                    print('i:',i)
+                    print('j:',j)
+                    print('t_slice:',t_slice)
+            else:
+                # Planning failed, return False after clearing traces
+                self.grid.clear_veh_cell(message['veh_id'])
+                return None
+
+            # Update position, velocity, acceleration, and shape
+            x_1d += v * veh_dt + acc[a_idx][1] / 2 * veh_dt ** 2
+            v += acc[a_idx][1] * veh_dt
+            t += 1
+            if a_idx+1 < len(acc) and t >= acc[a_idx+1][0]:
+                a_idx += 1
+            if x_1d > ju_shape_end_x[seg_idx]:
+                seg_idx += 1 # If it is the last shape, it will exit the loop, it’s okay
+
+        occ_dura = max((v-inter_v_lim_min)/message['max_dec'] + message['veh_len']/v, min_gen_ht)
+        occ_start = math.floor(t - (occ_dura / veh_dt))
+        occ_end = math.ceil(t)
+        for record in self.grid.ex_lane_record[ex_arm + str(ex_lane)]:
+            if not (record[1] > occ_end or record[2] < occ_start):
+                self.grid.clear_veh_cell(message['veh_id'])
+                return None
+
+        self.grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
+        return start_t
+
+    def check_request(self, message): 
+        ex_arm = Map.getInstance().get_ex_arm(message['arr_arm'], message['turn_dir'])
+        ex_lane_list = self.get_ex_lane_list(message['arr_arm'], message['turn_dir'], message['arr_lane'])
+        for ex_lane in ex_lane_list:
+            ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
+            ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
+            acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
+            exit_time_acc=0  # Initialize exit time with the arrival time
+            exit_time_const_v=0
+            exit_v_acc=0    
+            exit_v_const_v=0
+
+            if acc_distance >= ju_shape_end_x[-1]: 
+                # Accelerate the whole process
+                acc_acc = [[message['arr_t'], message['max_acc']]]
+                # Estimate exit time assuming constant acceleration over the distance
+                exit_time_acc  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                exit_velocity_acc = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+            else:
+                # Acceleration-constant speed
+                acc_time = (inter_v_lim - message['arr_v']) / message['max_acc']
+                constant_speed_distance = ju_shape_end_x[-1] - acc_distance
+                constant_speed_time = constant_speed_distance / inter_v_lim
+                exit_time_acc  += acc_time + constant_speed_time
+                exit_velocity_acc = inter_v_lim
+
+                acc_acc = [
+                    [message['arr_t'], message['max_acc']], 
+                    [message['arr_t'] + acc_time, 0]
+                ]
+
+            if message['arr_v'] < inter_v_lim_min:
+                acc_distance_c = (8**2 - message['arr_v']**2) / 2 / message['max_acc']
+                if acc_distance_c >= ju_shape_end_x[-1]: 
+                    acc_const_v = [[message['arr_t'], message['max_acc']]]
+                    exit_time_const_v  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                    exit_velocity_const_v = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+                else:
+                    acc_time_c = (8 - message['arr_v']) / message['max_acc']
+                    constant_speed_distance_c = ju_shape_end_x[-1] - acc_distance_c
+                    constant_speed_time_c = constant_speed_distance_c / 8
+                    exit_time_const_v  += acc_time_c + constant_speed_time_c
+                    exit_velocity_const_v = 8
+
+                    acc_const_v = [
+                        [message['arr_t'], message['max_acc']], 
+                        [message['arr_t'] + acc_time_c, 0]
+                    ]
+            else:
+                acc_const_v = [[message['arr_t'], 0]]
+                constant_speed_distance = ju_shape_end_x[-1]
+                constant_speed_time = constant_speed_distance / message['arr_v']
+                exit_time_const_v += constant_speed_time
+                exit_velocity_const_v = message['arr_v']
+
+
+        return message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v
+    
+    
+
+
+    
+    def reserve_list_of_requests(self, requests):
+        temp_grid = DresnerResGrid(0.5)
+        temp_grid.cells = self.grid.cells.copy()
+        result_list=[]
+        for request in requests:
+            message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v= self.check_request(request)
+            start_time, exit_time, exit_velocity = self.check_cells_stepwise_boss(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,temp_grid)
+            result_list.append((message,start_time, exit_time, exit_velocity))
+        return temp_grid, result_list
+    
+    def evaluate_chromosome(self,temp_grid, requests):
+        temp_grid, result_list = self.reserve_list_of_requests(requests)
+        total_time = 0 
+        for result in result_list:
+            total_time += result[0]['inital_t']
+            total_time += result[2]
+            total_time += self.calculate_travel_time(result[3],veh_param['max_acc'] , arm_v_lim, 100)
+        return total_time
+    
+
+
+
+    def calculate_travel_time(self,x, a, v_max, m):
+        # Step 1: Calculate distance needed to reach v_max
+        d_acc = (v_max**2 - x**2) / (2 * a)
+        
+        if d_acc >= m:
+            # The object doesn't reach v_max within distance m
+            # Use quadratic equation to solve for t_total: 0.5*a*t^2 + x*t - m = 0
+            coeffs = [0.5 * a, x, -m]
+            roots = np.roots(coeffs)
+            # Filter out the negative root since time cannot be negative
+            t_total = max(roots)
+        else:
+            # The object reaches v_max
+            # Calculate time to reach v_max
+            t_acc = (v_max - x) / a
+            # Calculate remaining distance after reaching v_max
+            d_const = m - d_acc
+            # Calculate time to cover d_const at v_max
+            t_const = d_const / v_max
+            # Total time is sum of t_acc and t_const
+            t_total = t_acc + t_const
+        
+        return t_total
+
+    def sortRequests(self, requests):
+        # Sort the requests by the arrival time
+        sorted_reservations = sorted(requests, key=lambda x: (x['arr_arm'], x['arr_lane'], x['arr_t']))
+        return sorted_reservations
+
+    def initialize_population(pop_size, num_reservations):
+        population = []
+        for _ in range(pop_size):
+            individual = np.random.permutation(num_reservations).tolist()
+            population.append(individual)
+        return population
+    
+    def fitness_function(individual):
+        # Reconstruct the sequence of reservations from the individual
+        ordered_requests = [sorted_reservations[i] for i in individual]
+        
+        # Use your evaluate_chromosome function here
+        total_time = self.evaluate_chromosome(temp_grid, ordered_requests)  # You need to define temp_grid and the function
+
+        # The fitness value could be the total time, or its inverse if you want to maximize the fitness
+        return total_time
+
+    def ga_fitness_function(solution, solution_idx):
+        return fitness_function(solution)
+
+    ga_instance = pygad.GA(num_generations=50,
+                        num_parents_mating=5,
+                        fitness_func=ga_fitness_function,
+                        sol_per_pop=pop_size,
+                        num_genes=len(sorted_reservations),
+                        gene_type=int,
+                        init_range_low=0,
+                        init_range_high=len(sorted_reservations)-1,
+                        parent_selection_type="tournament",
+                        crossover_type="single_point",
+                        mutation_type="random",
+                        mutation_percent_genes=10)
+
+    ga_instance.run()
+            
     
 
 
