@@ -21,10 +21,7 @@ from gymnasium.envs.registration import register
 def register_highway_envs():
     """Import the envs module so that envs register themselves."""
 
-    register(
-    id='three-intersection-v0',
-    entry_point='highway_env.envs:ThreeWayIntersectionEnv',
-    )   
+
 
     # exit_env.py
     register(
@@ -64,6 +61,15 @@ def register_highway_envs():
         entry_point="highway_env.envs:TupleMultiAgentIntersectionEnv",
     )
 
+    register(
+    id='three-intersection-v0',
+    entry_point='highway_env.envs:ThreeWayIntersectionEnv',
+    )   
+
+    register(
+        id="three-intersection-multi-agent-v0",
+        entry_point="highway_env.envs:MultiAgentThreeWayIntersectionEnv",
+    )    
     # lane_keeping_env.py
     register(
         id="lane-keeping-v0",
