@@ -38,15 +38,18 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     "observe_intentions": False,
                 },
                 "action": {
-                    "type": "ContinuousAction",
+                    "type": "DiscreteMetaAction",
+                    # "actions_per_axis": 10,
+                    # "acceleration_range": [-5.0, 5.0],
+                    # "steering_range": [-0.8, 0.8]
                 },
+                # "actions_per_axis": 10,
                 "duration": 13,  # [s]
-                "destination": "o1",
                 "controlled_vehicles": 1,
-                "initial_vehicle_count": 10,
-                "spawn_probability": 0.6,
-                "screen_width": 600,
-                "screen_height": 600,
+                "initial_vehicle_count": 30,
+                "spawn_probability": 1,
+                "screen_width": 1200,
+                "screen_height": 1200,
                 "centering_position": [0.5, 0.6],
                 "scaling": 5.5 * 1.3,
                 "collision_reward": -5,
@@ -155,9 +158,9 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         :return: the intersection road
         """
         lane_width = AbstractLane.DEFAULT_WIDTH
-        right_turn_radius = lane_width + 5  # [m]
-        left_turn_radius = right_turn_radius + lane_width * 2  # [m] to accommodate the extra lanes
-        outer_distance = right_turn_radius + lane_width * 1.5  # Adjusted for 3 lanes
+        right_turn_radius = lane_width + 5  # [m}
+        left_turn_radius = right_turn_radius + 3*lane_width  # [m}
+        outer_distance = right_turn_radius + lane_width / 2
         access_length = 50 + 50  # [m]
 
         net = RoadNetwork()
@@ -170,28 +173,42 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
             )
             # Incoming
-            start = rotation @ np.array(
-                [lane_width / 2, access_length + outer_distance]
-            )
-            end = rotation @ np.array([lane_width / 2, outer_distance])
-            net.add_lane(
-                "o" + str(corner),
-                "ir" + str(corner),
-                StraightLane(
-                    start, end, line_types=[s, c], priority=priority, speed_limit=10
-                ),
-            )
+            # start = rotation @ np.array(
+            #     [lane_width / 2, access_length + outer_distance]
+            # )
+            # end = rotation @ np.array([lane_width / 2, outer_distance])
+            # net.add_lane(
+            #     "o" + str(corner),
+            #     "ir" + str(corner),
+            #     StraightLane(
+            #         start, end, line_types=[c, c], priority=priority, speed_limit=10
+            #     ),
+            # )
+            # Incoming
+            # Edited code os that there is 3 incomeing lanes instead of 1 
+            for i in range(3):
+                start = rotation @ np.array(
+                    [lane_width / 2 + (i * lane_width), access_length + outer_distance + (2*lane_width)]
+                )
+                end = rotation @ np.array([lane_width / 2 + (i * lane_width), outer_distance+ (2*lane_width)])
+                net.add_lane(
+                    "o:"+ str(i) +":"+ str(corner),
+                    "ir:"+ str(i) + ":"+  str(corner),
+                    StraightLane(
+                        start, end, line_types=[c, c], priority=priority, speed_limit=10
+                    ),
+                )
             # Right turn
-            r_center = rotation @ (np.array([outer_distance, outer_distance]))
+            r_center = rotation @ (np.array([outer_distance+(2*lane_width), outer_distance+(2*lane_width)]))
             net.add_lane(
-                "ir" + str(corner),
-                "il" + str((corner - 1) % 4),
+                "ir:"+ "2:"+  str(corner),
+                "il:"+ "2:" + str((corner - 1) % 4),
                 CircularLane(
                     r_center,
                     right_turn_radius,
                     angle + np.radians(180),
                     angle + np.radians(270),
-                    line_types=[n, c],
+                    line_types=[c, c],
                     priority=priority,
                     speed_limit=10,
                 ),
@@ -206,41 +223,56 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 )
             )
             net.add_lane(
-                "ir" + str(corner),
-                "il" + str((corner + 1) % 4),
+                "ir:"+ "0:"+ str(corner),
+                "il:"+ "0:"+  str((corner + 1) % 4),
                 CircularLane(
                     l_center,
                     left_turn_radius,
                     angle + np.radians(0),
                     angle + np.radians(-90),
                     clockwise=False,
-                    line_types=[n, n],
+                    line_types=[c, c],
                     priority=priority - 1,
                     speed_limit=10,
                 ),
             )
             # Straight
-            start = rotation @ np.array([lane_width / 2, outer_distance])
-            end = rotation @ np.array([lane_width / 2, -outer_distance])
+            start = rotation @ np.array([lane_width / 2 + lane_width, outer_distance + (2*lane_width)])
+            end = rotation @ np.array([lane_width / 2+ lane_width, -outer_distance - (2*lane_width)])
             net.add_lane(
-                "ir" + str(corner),
-                "il" + str((corner + 2) % 4),
+                "ir:"+ "1:"+str(corner),
+                "il:"+ "1:"+ str((corner + 2) % 4),
                 StraightLane(
-                    start, end, line_types=[s, n], priority=priority, speed_limit=10
+                    start, end, line_types=[c, c], priority=priority, speed_limit=10
                 ),
             )
             # Exit
-            start = rotation @ np.flip(
-                [lane_width / 2, access_length + outer_distance], axis=0
-            )
-            end = rotation @ np.flip([lane_width / 2, outer_distance], axis=0)
-            net.add_lane(
-                "il" + str((corner - 1) % 4),
-                "o" + str((corner - 1) % 4),
-                StraightLane(
-                    end, start, line_types=[n, c], priority=priority, speed_limit=10
-                ),
-            )
+            # start = rotation @ np.flip(
+            #     [lane_width / 2, access_length + outer_distance], axis=0
+            # )
+            # end = rotation @ np.flip([lane_width / 2, outer_distance], axis=0)
+            # net.add_lane(
+            #     "il" + str((corner - 1) % 4),
+            #     "o" + str((corner - 1) % 4),
+            #     StraightLane(
+            #         end, start, line_types=[n, c], priority=priority, speed_limit=10
+            #     ),
+            # )
+            # Exit
+            for i in range(3):
+                start = rotation @ np.flip(
+                    [lane_width / 2 + (i * lane_width), outer_distance + (2*lane_width)]
+                )
+                end = rotation @ np.flip(
+                    [lane_width / 2 + (i * lane_width), access_length + outer_distance + (2*lane_width)]
+                )
+                net.add_lane(
+                    "il:" + str(i) + ":" + str((corner - 1) % 4),  # Source lane identifier
+                    "o:" + str(i) + ":" + str((corner - 1) % 4),  # Destination lane identifier
+                    StraightLane(
+                        start, end, line_types=[c, c], priority=priority, speed_limit=10
+                    ),
+                )
 
         road = RegulatedRoad(
             network=net,
@@ -286,12 +318,22 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         # Controlled vehicles
         self.controlled_vehicles = []
         for ego_id in range(0, self.config["controlled_vehicles"]):
+            # 0 if left, 1 if middle, 2 if right
+            right_middle_left = self.np_random.choice(range(3))
+            if right_middle_left == 0:  # Left lane
+                # Turn left: destination is the road to the left of the current direction
+                destination_direction = (ego_id % 4 + 3) % 4  # Counter-clockwise turn
+            elif right_middle_left == 2:  # Right lane
+                # Turn right: destination is the road to the right of the current direction
+                destination_direction = (ego_id % 4 + 1) % 4  # Clockwise turn
+            else:  # Middle lane
+                # Go straight: destination is the road across the intersection
+                destination_direction = (ego_id % 4 + 2) % 4
+
             ego_lane = self.road.network.get_lane(
-                ("o{}".format(ego_id % 4), "ir{}".format(ego_id % 4), 0)
+                ("o:{}".format(right_middle_left)+":{}".format(ego_id % 4), "ir:{}".format(right_middle_left)+":{}".format(ego_id % 4), 0)
             )
-            destination = self.config["destination"] or "o" + str(
-                self.np_random.integers(1, 4)
-            )
+            destination = "o:{}:{}".format(right_middle_left, destination_direction)
             ego_vehicle = self.action_type.vehicle_class(
                 self.road,
                 ego_lane.position(60 + 5 * self.np_random.normal(1), 0),
@@ -329,12 +371,19 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         if self.np_random.uniform() > spawn_probability:
             return
 
-        route = self.np_random.choice(range(4), size=2, replace=False)
-        route[1] = (route[0] + 2) % 4 if go_straight else route[1]
+        right_middle_left = self.np_random.choice(range(3))  # 0: left, 1: middle, 2: right
+        route_start = self.np_random.choice(range(4))
+        if right_middle_left == 0:  # Intend to turn left
+            destination_direction = (route_start + 3) % 4
+        elif right_middle_left == 2:  # Intend to turn right
+            destination_direction = (route_start + 1) % 4
+        else:  # Intend to go straight
+            destination_direction = (route_start + 2) % 4 if go_straight else self.np_random.choice(range(4))
+
         vehicle_type = utils.class_from_path(self.config["other_vehicles_type"])
         vehicle = vehicle_type.make_on_lane(
             self.road,
-            ("o" + str(route[0]), "ir" + str(route[0]), 0),
+            ("o:{}:{}".format(right_middle_left, route_start), "ir:{}:{}".format(right_middle_left, route_start), 0),
             longitudinal=(
                 longitudinal + 5 + self.np_random.normal() * position_deviation
             ),
@@ -343,17 +392,15 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         for v in self.road.vehicles:
             if np.linalg.norm(v.position - vehicle.position) < 15:
                 return
-        vehicle.plan_route_to("o" + str(route[1]))
+        vehicle.plan_route_to("o:{}:{}".format(right_middle_left, destination_direction))
         vehicle.randomize_behavior()
         self.road.vehicles.append(vehicle)
         return vehicle
 
     def _clear_vehicles(self) -> None:
         is_leaving = (
-            lambda vehicle: "il" in vehicle.lane_index[0]
-            and "o" in vehicle.lane_index[1]
-            and vehicle.lane.local_coordinates(vehicle.position)[0]
-            >= vehicle.lane.length - 4 * vehicle.LENGTH
+            lambda vehicle: vehicle.lane_index[1].startswith("o")
+            and vehicle.lane.local_coordinates(vehicle.position)[0] >= vehicle.lane.length - 4 * vehicle.LENGTH
         )
         self.road.vehicles = [
             vehicle
@@ -364,10 +411,10 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
     def has_arrived(self, vehicle: Vehicle, exit_distance: float = 25) -> bool:
         return (
-            "il" in vehicle.lane_index[0]
-            and "o" in vehicle.lane_index[1]
+            vehicle.lane_index[1].startswith("o")
             and vehicle.lane.local_coordinates(vehicle.position)[0] >= exit_distance
         )
+
 
 
 class MultiAgentThreeWayIntersectionEnv(ThreeWayIntersectionEnv):

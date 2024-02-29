@@ -8,3 +8,6 @@ from highway_env.envs.lane_keeping_env import *
 from highway_env.envs.u_turn_env import *
 from highway_env.envs.exit_env import *
 from highway_env.envs.racetrack_env import *
+from highway_env.envs.three_way_intersection import *
+
+
