@@ -92,10 +92,11 @@ class EnvViewer(object):
 
         :param actions: list of action, following the env's action space specification
         """
+
         if isinstance(self.env.action_type, DiscreteMetaAction):
             actions = [self.env.action_type.actions[a] for a in actions]
         elif isinstance(self.env.action_type, ContinuousAction):
-            actions = [self.env.action_type.get_action(a) for a in actions]
+            actions = [self.env.action_type.get_action(self.env.getActionJames(a)) for a in actions]
         if len(actions) > 1:
             self.vehicle_trajectory = self.env.vehicle.predict_trajectory(
                 actions,

@@ -160,6 +160,13 @@ class ContinuousAction(ActionType):
         self.controlled_vehicle.act(self.get_action(action))
         self.last_action = action
 
+    def getActionJames(self, action:int) -> None:
+        cont_space = super().space()
+        axes = np.linspace(cont_space.low, cont_space.high, self.actions_per_axis).T
+        all_actions = list(itertools.product(*axes))
+
+        return all_actions[action]
+
 
 class DiscreteAction(ContinuousAction):
     def __init__(
@@ -192,7 +199,15 @@ class DiscreteAction(ContinuousAction):
         cont_space = super().space()
         axes = np.linspace(cont_space.low, cont_space.high, self.actions_per_axis).T
         all_actions = list(itertools.product(*axes))
+        
         super().act(all_actions[action])
+
+    def getActionJames(self, action:int) -> None:
+        cont_space = super().space()
+        axes = np.linspace(cont_space.low, cont_space.high, self.actions_per_axis).T
+        all_actions = list(itertools.product(*axes))
+        
+        return all_actions[action]
 
 
 class DiscreteMetaAction(ActionType):
@@ -295,6 +310,9 @@ class DiscreteMetaAction(ActionType):
             actions.append(self.actions_indexes["FASTER"])
         if self.controlled_vehicle.speed_index > 0 and self.longitudinal:
             actions.append(self.actions_indexes["SLOWER"])
+            print("============================")
+            print(actions)
+            print("============================")
         return actions
 
 

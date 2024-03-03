@@ -38,12 +38,12 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     "observe_intentions": False,
                 },
                 "action": {
-                    "type": "DiscreteMetaAction",
-                    # "actions_per_axis": 10,
-                    # "acceleration_range": [-5.0, 5.0],
-                    # "steering_range": [-0.8, 0.8]
+                    "type": "DiscreteAction",
+                    "actions_per_axis": 10,
+                    "acceleration_range": [-5.0, 5.0],
+                    "steering_range": [-0.8, 0.8]
                 },
-                # "actions_per_axis": 10,
+                "actions_per_axis": 10,
                 "duration": 13,  # [s]
                 "controlled_vehicles": 1,
                 "initial_vehicle_count": 30,
@@ -52,11 +52,11 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "screen_height": 1200,
                 "centering_position": [0.5, 0.6],
                 "scaling": 5.5 * 1.3,
-                "collision_reward": -5,
-                "high_speed_reward": 1,
+                "collision_reward": -7,
+                "high_speed_reward": 0.5,
                 "arrived_reward": 1,
                 "reward_speed_range": [7.0, 9.0],
-                "normalize_reward": False,
+                "normalize_reward": True,
                 "offroad_terminal": False,
             }
         )
