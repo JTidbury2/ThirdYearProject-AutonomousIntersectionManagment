@@ -25,7 +25,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             {
                 "observation": {
                     "type": "Kinematics",
-                    "vehicles_count": 15,
+                    "vehicles_count": 1,
                     "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
                     "features_range": {
                         "x": [-100, 100],
@@ -35,7 +35,10 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     },
                     "absolute": True,
                     "flatten": False,
+                    "see_behind": True,
                     "observe_intentions": False,
+                    "order": "sorted",
+                    "normalize": False, 
                 },
                 "action": {
                     "type": "DiscreteAction",
@@ -54,10 +57,10 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "scaling": 5.5 * 1.3,
                 "collision_reward": -7,
                 "high_speed_reward": 0.5,
-                "arrived_reward": 1,
+                "arrived_reward": 5,
                 "reward_speed_range": [7.0, 9.0],
                 "normalize_reward": True,
-                "offroad_terminal": False,
+                "offroad_terminal": True,
             }
         )
         return config
