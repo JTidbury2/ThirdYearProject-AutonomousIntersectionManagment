@@ -1,5 +1,5 @@
 {
-    "base_config": "configs/IntersectionEnv/agents/DQNAgent/ego_attention.json",
+    "base_config": "../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention.json",
     "model": {
         "attention_layer": {
             "heads": 8
