@@ -69,6 +69,7 @@ class AbstractDQNAgent(AbstractStochasticAgent, ABC):
         :param step_exploration_time: step the exploration schedule
         :return: an action
         """
+        print("State", state)
         self.previous_state = state
         if step_exploration_time:
             self.exploration_policy.step_time()

@@ -35,7 +35,10 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     },
                     "absolute": True,
                     "flatten": False,
+                    "see_behind": True,
                     "observe_intentions": False,
+                    "order": "sorted",
+                    "normalize": False, 
                 },
                 "action": {
                     "type": "DiscreteAction",
@@ -52,12 +55,13 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "screen_height": 1200,
                 "centering_position": [0.5, 0.6],
                 "scaling": 5.5 * 1.3,
-                "collision_reward": -7,
+                "collision_reward": -10,
                 "high_speed_reward": 0.5,
-                "arrived_reward": 1,
-                "reward_speed_range": [7.0, 9.0],
+                "arrived_reward": 0,
+                "reward_speed_range": [-1, 1],
                 "normalize_reward": True,
-                "offroad_terminal": False,
+                "offroad_terminal": True,
+                "alive_reward":1
             }
         )
         return config
@@ -97,20 +101,25 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
     def _agent_rewards(self, action: int, vehicle: Vehicle) -> Dict[Text, float]:
         """Per-agent per-objective reward signal."""
-        scaled_speed = utils.lmap(
-            vehicle.speed, self.config["reward_speed_range"], [0, 1]
-        )
+        is_in_speed_range = self.config["reward_speed_range"][0] <= vehicle.speed <= self.config["reward_speed_range"][1]
         return {
             "collision_reward": vehicle.crashed,
-            "high_speed_reward": np.clip(scaled_speed, 0, 1),
+            "high_speed_reward": is_in_speed_range,
             "arrived_reward": self.has_arrived(vehicle),
             "on_road_reward": vehicle.on_road,
+            "alive_reward":1,
         }
     
     def _is_terminated(self) -> bool:
+        if (any(vehicle.crashed for vehicle in self.controlled_vehicles)):
+            print("Terminated, crashed",self.time)
+        elif (all(self.has_arrived(vehicle) for vehicle in self.controlled_vehicles)):
+            print("Terminated, arrived",self.time)
+        elif (self.config["offroad_terminal"] and not self.vehicle.on_road):
+            print("Terminated, offroad",self.time)
+
         return (
             any(vehicle.crashed for vehicle in self.controlled_vehicles)
-            or all(self.has_arrived(vehicle) for vehicle in self.controlled_vehicles)
             or (self.config["offroad_terminal"] and not self.vehicle.on_road)
         )
 
@@ -120,6 +129,8 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
     def _is_truncated(self) -> bool:
         """The episode is truncated if the time limit is reached."""
+        print("Time", self.time)
+        print("Truncated", self.time >= self.config["duration"])
         return self.time >= self.config["duration"]
 
     def _info(self, obs: np.ndarray, action: int) -> dict:
@@ -334,11 +345,20 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 ("o:{}".format(right_middle_left)+":{}".format(ego_id % 4), "ir:{}".format(right_middle_left)+":{}".format(ego_id % 4), 0)
             )
             destination = "o:{}:{}".format(right_middle_left, destination_direction)
+
+            # Assuming 'self.road' has an attribute 'speed_limit' that defines the maximum speed for the road
+            max_speed = ego_lane.speed_limit
+
+            # Generate a random speed between 0 and max_speed
+            random_speed = self.np_random.uniform(0, 3*max_speed/4)
+
+            # Generate a random heading in radians. Assuming full 360-degree freedom, 0 to 2*pi radians.
+            random_heading = self.np_random.uniform(0, 2 * np.pi)
             ego_vehicle = self.action_type.vehicle_class(
                 self.road,
-                ego_lane.position(60 + 5 * self.np_random.normal(1), 0),
-                speed=ego_lane.speed_limit,
-                heading=ego_lane.heading_at(60),
+                [0,0],
+                speed=random_speed,
+                heading=random_heading,
             )
             try:
                 ego_vehicle.plan_route_to(destination)

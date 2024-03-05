@@ -198,9 +198,9 @@ class RoadObject(ABC):
 
     @property
     def on_road(self) -> bool:
-        """Is the object on its current lane, or off-road?"""
-        return self.lane.on_lane(self.position)
-
+        """Is the object within the specified position bounds, or off-road?"""
+        # Check if both x and y coordinates of the position are within the range [-20, 20]
+        return np.all((-17 <= self.position) & (self.position <= 17))
     def front_distance_to(self, other: "RoadObject") -> float:
         return self.direction.dot(other.position - self.position)
 

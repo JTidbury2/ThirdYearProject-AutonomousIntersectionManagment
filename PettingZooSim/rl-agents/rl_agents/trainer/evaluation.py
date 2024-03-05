@@ -118,7 +118,7 @@ class Evaluation(object):
             self.run_batched_episodes()
         else:
             self.run_episodes()
-        self.close()
+        return self.close()
 
     def test(self):
         """
@@ -380,8 +380,10 @@ class Evaluation(object):
             Close the evaluation.
         """
         if self.training:
-            self.save_agent_model("final")
+            saved_dir=self.save_agent_model("final")
         self.wrapped_env.close()
         self.writer.close()
         if self.close_env:
             self.env.close()
+        return saved_dir
+        
