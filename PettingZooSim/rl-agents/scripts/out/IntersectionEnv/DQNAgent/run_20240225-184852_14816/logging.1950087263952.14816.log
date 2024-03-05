@@ -1,0 +1,55 @@
+[rl_agents.trainer.evaluation:INFO] Episode 0 score: 2.8 
+[rl_agents.trainer.evaluation:INFO] Saved DQNAgent model to out\MultiAgentIntersectionEnv\DQNAgent\run_20240225-190102_14816\checkpoint-0.tar 
+[rl_agents.trainer.evaluation:INFO] Episode 1 score: 0.2 
+[rl_agents.trainer.evaluation:INFO] Saved DQNAgent model to out\MultiAgentIntersectionEnv\DQNAgent\run_20240225-190102_14816\checkpoint-1.tar 
+[rl_agents.trainer.evaluation:INFO] Episode 2 score: 5.0 
+[rl_agents.trainer.evaluation:INFO] Episode 3 score: 0.1 
+[rl_agents.trainer.evaluation:INFO] Episode 4 score: 0.0 
+[rl_agents.trainer.evaluation:INFO] Episode 5 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 6 score: 5.0 
+[rl_agents.trainer.evaluation:INFO] Episode 7 score: 0.2 
+[rl_agents.trainer.evaluation:INFO] Episode 8 score: 0.4 
+[rl_agents.trainer.evaluation:INFO] Saved DQNAgent model to out\MultiAgentIntersectionEnv\DQNAgent\run_20240225-190102_14816\checkpoint-8.tar 
+[rl_agents.trainer.evaluation:INFO] Episode 9 score: 1.5 
+[rl_agents.trainer.evaluation:INFO] Episode 10 score: -0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 11 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 12 score: -0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 13 score: -0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 14 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 15 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 16 score: 0.5 
+[rl_agents.trainer.evaluation:INFO] Episode 17 score: 0.0 
+[rl_agents.trainer.evaluation:INFO] Episode 18 score: 1.3 
+[rl_agents.trainer.evaluation:INFO] Episode 19 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 20 score: 1.5 
+[rl_agents.trainer.evaluation:INFO] Episode 21 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 22 score: 5.0 
+[rl_agents.trainer.evaluation:INFO] Episode 23 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 24 score: -1.1 
+[rl_agents.trainer.evaluation:INFO] Episode 25 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Episode 26 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 27 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Saved DQNAgent model to out\MultiAgentIntersectionEnv\DQNAgent\run_20240225-190102_14816\checkpoint-27.tar 
+[rl_agents.trainer.evaluation:INFO] Episode 28 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 29 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 30 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 31 score: 1.8 
+[rl_agents.trainer.evaluation:INFO] Episode 32 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 33 score: 5.0 
+[rl_agents.trainer.evaluation:INFO] Episode 34 score: 0.2 
+[rl_agents.trainer.evaluation:INFO] Episode 35 score: 1.2 
+[rl_agents.trainer.evaluation:INFO] Episode 36 score: -0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 37 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Episode 38 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Episode 39 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 40 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 41 score: -0.3 
+[rl_agents.trainer.evaluation:INFO] Episode 42 score: -0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 43 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 44 score: 1.5 
+[rl_agents.trainer.evaluation:INFO] Episode 45 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 46 score: 5.0 
+[rl_agents.trainer.evaluation:INFO] Episode 47 score: 0.8 
+[rl_agents.trainer.evaluation:INFO] Episode 48 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Episode 49 score: -0.5 
+[rl_agents.trainer.evaluation:INFO] Saved DQNAgent model to out\MultiAgentIntersectionEnv\DQNAgent\run_20240225-190102_14816\checkpoint-final.tar 
