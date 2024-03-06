@@ -975,33 +975,33 @@ class GeneticManager(DresnerManager):
             population.append(individual)
         return population
     
-    def fitness_function(individual):
-        # Reconstruct the sequence of reservations from the individual
-        ordered_requests = [sorted_reservations[i] for i in individual]
+    # def fitness_function(individual):
+    #     # Reconstruct the sequence of reservations from the individual
+    #     ordered_requests = [sorted_reservations[i] for i in individual]
         
-        # Use your evaluate_chromosome function here
-        total_time = self.evaluate_chromosome(temp_grid, ordered_requests)  # You need to define temp_grid and the function
+    #     # Use your evaluate_chromosome function here
+    #     total_time = self.evaluate_chromosome(temp_grid, ordered_requests)  # You need to define temp_grid and the function
 
-        # The fitness value could be the total time, or its inverse if you want to maximize the fitness
-        return total_time
+    #     # The fitness value could be the total time, or its inverse if you want to maximize the fitness
+    #     return total_time
 
-    def ga_fitness_function(solution, solution_idx):
-        return fitness_function(solution)
+    # def ga_fitness_function(solution, solution_idx):
+    #     return fitness_function(solution)
 
-    ga_instance = pygad.GA(num_generations=50,
-                        num_parents_mating=5,
-                        fitness_func=ga_fitness_function,
-                        sol_per_pop=pop_size,
-                        num_genes=len(sorted_reservations),
-                        gene_type=int,
-                        init_range_low=0,
-                        init_range_high=len(sorted_reservations)-1,
-                        parent_selection_type="tournament",
-                        crossover_type="single_point",
-                        mutation_type="random",
-                        mutation_percent_genes=10)
+    # ga_instance = pygad.GA(num_generations=50,
+    #                     num_parents_mating=5,
+    #                     fitness_func=ga_fitness_function,
+    #                     sol_per_pop=pop_size,
+    #                     num_genes=len(sorted_reservations),
+    #                     gene_type=int,
+    #                     init_range_low=0,
+    #                     init_range_high=len(sorted_reservations)-1,
+    #                     parent_selection_type="tournament",
+    #                     crossover_type="single_point",
+    #                     mutation_type="random",
+    #                     mutation_percent_genes=10)
 
-    ga_instance.run()
+    # ga_instance.run()
             
     
 
