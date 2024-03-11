@@ -72,6 +72,14 @@ class Simulator:
             #insert code here 
             self.sim_over=True
 
+    def switch_to_rl(self):
+        for group, vehs in self.all_veh.items():
+            if group == "ju":
+                for veh in vehs:
+                    veh.switch_to_rl()
+
+
+
     def check_for_collisions(self):
         crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         

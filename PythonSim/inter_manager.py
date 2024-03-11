@@ -421,10 +421,10 @@ class DresnerManager(BaseInterManager):
             # Check whether all occupied grid points are empty
             if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
                 self.res_grid.cells[i, j, t_slice] = message['veh_id']
-                if message['veh_id']==1:
-                    print('i:',i)
-                    print('j:',j)
-                    print('t_slice:',t_slice)
+                # if message['veh_id']==1:
+                #     print('i:',i)
+                #     print('j:',j)
+                #     print('t_slice:',t_slice)
             else:
                 # Planning failed, return False after clearing traces
                 self.res_grid.clear_veh_cell(message['veh_id'])
@@ -826,10 +826,10 @@ class GeneticManager(DresnerManager):
             # Check whether all occupied grid points are empty
             if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
                 self.grid.cells[i, j, t_slice] = message['veh_id']
-                if message['veh_id']==1:
-                    print('i:',i)
-                    print('j:',j)
-                    print('t_slice:',t_slice)
+                # if message['veh_id']==1:
+                #     print('i:',i)
+                #     print('j:',j)
+                #     print('t_slice:',t_slice)
             else:
                 # Planning failed, return False after clearing traces
                 self.grid.clear_veh_cell(message['veh_id'])
@@ -917,63 +917,63 @@ class GeneticManager(DresnerManager):
 
 
     
-    def reserve_list_of_requests(self, requests):
-        temp_grid = DresnerResGrid(0.5)
-        temp_grid.cells = self.grid.cells.copy()
-        result_list=[]
-        for request in requests:
-            message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v= self.check_request(request)
-            start_time, exit_time, exit_velocity = self.check_cells_stepwise_boss(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,temp_grid)
-            result_list.append((message,start_time, exit_time, exit_velocity))
-        return temp_grid, result_list
+    # def reserve_list_of_requests(self, requests):
+    #     temp_grid = DresnerResGrid(0.5)
+    #     temp_grid.cells = self.grid.cells.copy()
+    #     result_list=[]
+    #     for request in requests:
+    #         message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v= self.check_request(request)
+    #         start_time, exit_time, exit_velocity = self.check_cells_stepwise_boss(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,temp_grid)
+    #         result_list.append((message,start_time, exit_time, exit_velocity))
+    #     return temp_grid, result_list
     
-    def evaluate_chromosome(self,temp_grid, requests):
-        temp_grid, result_list = self.reserve_list_of_requests(requests)
-        total_time = 0 
-        for result in result_list:
-            total_time += result[0]['inital_t']
-            total_time += result[2]
-            total_time += self.calculate_travel_time(result[3],veh_param['max_acc'] , arm_v_lim, 100)
-        return total_time
+    # def evaluate_chromosome(self,temp_grid, requests):
+    #     temp_grid, result_list = self.reserve_list_of_requests(requests)
+    #     total_time = 0 
+    #     for result in result_list:
+    #         total_time += result[0]['inital_t']
+    #         total_time += result[2]
+    #         total_time += self.calculate_travel_time(result[3],veh_param['max_acc'] , arm_v_lim, 100)
+    #     return total_time
     
 
 
 
-    def calculate_travel_time(self,x, a, v_max, m):
-        # Step 1: Calculate distance needed to reach v_max
-        d_acc = (v_max**2 - x**2) / (2 * a)
+    # def calculate_travel_time(self,x, a, v_max, m):
+    #     # Step 1: Calculate distance needed to reach v_max
+    #     d_acc = (v_max**2 - x**2) / (2 * a)
         
-        if d_acc >= m:
-            # The object doesn't reach v_max within distance m
-            # Use quadratic equation to solve for t_total: 0.5*a*t^2 + x*t - m = 0
-            coeffs = [0.5 * a, x, -m]
-            roots = np.roots(coeffs)
-            # Filter out the negative root since time cannot be negative
-            t_total = max(roots)
-        else:
-            # The object reaches v_max
-            # Calculate time to reach v_max
-            t_acc = (v_max - x) / a
-            # Calculate remaining distance after reaching v_max
-            d_const = m - d_acc
-            # Calculate time to cover d_const at v_max
-            t_const = d_const / v_max
-            # Total time is sum of t_acc and t_const
-            t_total = t_acc + t_const
+    #     if d_acc >= m:
+    #         # The object doesn't reach v_max within distance m
+    #         # Use quadratic equation to solve for t_total: 0.5*a*t^2 + x*t - m = 0
+    #         coeffs = [0.5 * a, x, -m]
+    #         roots = np.roots(coeffs)
+    #         # Filter out the negative root since time cannot be negative
+    #         t_total = max(roots)
+    #     else:
+    #         # The object reaches v_max
+    #         # Calculate time to reach v_max
+    #         t_acc = (v_max - x) / a
+    #         # Calculate remaining distance after reaching v_max
+    #         d_const = m - d_acc
+    #         # Calculate time to cover d_const at v_max
+    #         t_const = d_const / v_max
+    #         # Total time is sum of t_acc and t_const
+    #         t_total = t_acc + t_const
         
-        return t_total
+    #     return t_total
 
-    def sortRequests(self, requests):
-        # Sort the requests by the arrival time
-        sorted_reservations = sorted(requests, key=lambda x: (x['arr_arm'], x['arr_lane'], x['arr_t']))
-        return sorted_reservations
+    # def sortRequests(self, requests):
+    #     # Sort the requests by the arrival time
+    #     sorted_reservations = sorted(requests, key=lambda x: (x['arr_arm'], x['arr_lane'], x['arr_t']))
+    #     return sorted_reservations
 
-    def initialize_population(pop_size, num_reservations):
-        population = []
-        for _ in range(pop_size):
-            individual = np.random.permutation(num_reservations).tolist()
-            population.append(individual)
-        return population
+    # def initialize_population(pop_size, num_reservations):
+    #     population = []
+    #     for _ in range(pop_size):
+    #         individual = np.random.permutation(num_reservations).tolist()
+    #         population.append(individual)
+    #     return population
     
     # def fitness_function(individual):
     #     # Reconstruct the sequence of reservations from the individual

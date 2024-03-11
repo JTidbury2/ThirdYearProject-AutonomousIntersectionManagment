@@ -154,6 +154,81 @@ class DresnerVehicle(BaseVehicle):
         self.crashOccured=crashHappenOnInit
         self.faultTime=0
         self.collidedCar=False
+        self.rl_x = 0
+        self.rl_y = 0
+        self.rl_vx = 0
+        self.rl_vy = 0
+        self.rl_cosh = 0
+        self.rl_sinh = 0
+
+
+
+
+
+    def update_rl_values(self):
+        # Use the value of inst_x and the seg values to compute the rl values
+        seg_idx = 0
+        for (i, end_x) in enumerate(self.track.ju_shape_end_x):
+            if self.inst_x > end_x:
+                seg_idx = i + 1
+                break
+
+        seg = self.track.ju_track[seg_idx]
+
+        if seg_idx > 0:
+            seg_x = self.inst_x - self.track.ju_shape_end_x[seg_idx - 1]
+        else:
+            seg_x = self.inst_x
+        print("seg is ",seg)
+        if seg[0] == 'line':
+            if abs(seg[1][0] - seg[2][0]) < 1e-5:  # vertical line
+                self.rl_x = seg[1][0]
+                if seg[1][1] < seg[2][1]:  # from top to bottom
+                    self.rl_y = seg[1][1] + seg_x
+                    self.rl_cosh = 0
+                    self.rl_sinh = -1
+                else:  # from bottom to top
+                    self.rl_y = seg[1][1] - seg_x
+                    self.rl_cosh = 0
+                    self.rl_sinh = 1
+            else:  # horizontal line
+                self.rl_y = seg[1][1]
+                if seg[1][0] < seg[2][0]:  # from left to right
+                    self.rl_x = seg[1][0] + seg_x
+                    self.rl_cosh = 1
+                    self.rl_sinh = 0
+                else:  # from right to left
+                    self.rl_x = seg[1][0] - seg_x
+                    self.rl_cosh = -1
+                    self.rl_sinh = 0
+        else:  # circular curve
+            if seg[5][0] < seg[5][1]:  # Trajectory counterclockwise
+                print("top")
+                rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                self.rl_cosh = math.cos(-rotation / 180 * math.pi)
+                self.rl_sinh = math.sin(-rotation / 180 * math.pi)
+                self.rl_x = seg[3][0] + seg[4] * self.rl_cosh
+                self.rl_y = seg[3][1] + seg[4] * self.rl_sinh
+                temp = self.rl_cosh
+                self.rl_cosh = self.rl_sinh
+                self.rl_sinh = temp
+            else:
+                print("bottom")
+                rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                self.rl_cosh = math.cos(-rotation / 180 * math.pi)
+                self.rl_sinh = math.sin(-rotation / 180 * math.pi)
+                self.rl_x = seg[3][0] + seg[4] * self.rl_cosh
+                self.rl_y = seg[3][1] + seg[4] * self.rl_sinh
+                temp = self.rl_cosh
+                self.rl_cosh = -self.rl_sinh
+                self.rl_sinh = -temp
+
+        self.rl_y = -self.rl_y
+
+
+        self.rl_vx = self.inst_v * self.rl_cosh
+        self.rl_vy = self.inst_v * self.rl_sinh
+
 
     def plan_arr(self):
         '''According to the maximum arr_v, the earliest planned arrival time and speed of arr_t. Because only the leading car in a lane can plan this, so as long as the reservation is obtained, the plan can definitely be executed'''
@@ -225,6 +300,17 @@ class DresnerVehicle(BaseVehicle):
                 # Unsuccessful，prepare to stop at stop bar & follow leading vehicle
                 self.inst_a = min(self.acc_with_lead_veh(lead_veh), self.cf_model.acc_from_model(self.inst_v, - self.inst_x - self.veh_len_front, 0))
         elif self.zone == 'ju':
+            # check rl values 
+            self.update_rl_values()
+            if self._id == 0:
+                print("Timstep is: ",self.timestep)
+                print("rl_x is: ",self.rl_x)
+                print("rl_y is: ",self.rl_y)
+                print("rl_vx is: ",self.rl_vx)
+                print("rl_vy is: ",self.rl_vy)
+                print("rl_cosh is: ",self.rl_cosh)
+                print("rl_sinh is: ",self.rl_sinh)
+
             # Check if the vehicle is marked as faulty
             if self.faultyCar and self.timestep >= self.faultTime:
                 ComSystem.V2I(self, {

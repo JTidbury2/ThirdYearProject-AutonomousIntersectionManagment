@@ -300,25 +300,31 @@ class MyPaintCanvas(QWidget):
             if seg[0] == 'line': # It's a straight line, great
                 if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
                     x = seg[1][0]
+                    print("Paint x",x)
                     if seg[1][1] < seg[2][1]: # from top to bottom
                         y = seg[1][1] + seg_x
+                        print("Paint y",y)
                         rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
                         qp.drawRect(rect)
                         qp.drawText(rect.bottomLeft(), str(veh._id))
                     else: # from bottom to top
                         y = seg[1][1] - seg_x
+                        print("Paint y",y)
                         rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
                         qp.drawRect(rect)
                         qp.drawText(rect.bottomLeft(), str(veh._id))
                 else: #Horizontal line
                     y = seg[1][1]
+                    print("Paint y",y)
                     if seg[1][0] < seg[2][0]: # from left to right
                         x = seg[1][0] + seg_x
+                        print("Paint x",x)
                         rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
                         qp.drawRect(rect)
                         qp.drawText(rect.bottomLeft(), str(veh._id))
                     else: # from right to left
                         x = seg[1][0] - seg_x
+                        print("Paint x",x)
                         rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
                         qp.drawRect(rect)
                         qp.drawText(rect.bottomLeft(), str(veh._id))
