@@ -6,6 +6,7 @@ from pathlib import Path
 from gymnasium.wrappers import RecordVideo
 from IPython import display as ipythondisplay
 from pyvirtualdisplay import Display
+from lib.settings import veh_dt
 
 
 
@@ -59,4 +60,14 @@ class AgentInference(object):
         # Assuming the environment has a method to translate the action into a human-readable format
         actions = [self.agent.env.action_type.get_action(self.agent.env.getActionJames(a)) for a in action]
         return actions
+
+class VehicleInterface(object):
+    def __init__(self,speed, heading,):
+        self.vehicle = None 
+    def get_state_post_action(self):
+        d= self.vehicle.to_dict()
+        return d["x"], d["y"] , self.vehicle.speed, d["vx"], d["xy"], d["cos_h"], d["sin_h"]
     
+    def vehicle_do_action(self, action):
+        self.vehicle.act(action)
+        self.vehicle.step(veh_dt)
