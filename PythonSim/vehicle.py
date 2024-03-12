@@ -160,6 +160,7 @@ class DresnerVehicle(BaseVehicle):
         self.rl_vy = 0
         self.rl_cosh = 0
         self.rl_sinh = 0
+        self.heading = 0
 
 
 
@@ -187,20 +188,24 @@ class DresnerVehicle(BaseVehicle):
                     self.rl_y = seg[1][1] + seg_x
                     self.rl_cosh = 0
                     self.rl_sinh = -1
+                    self.heading= 1.5 * math.pi
                 else:  # from bottom to top
                     self.rl_y = seg[1][1] - seg_x
                     self.rl_cosh = 0
                     self.rl_sinh = 1
+                    self.heading= 0.5 * math.pi
             else:  # horizontal line
                 self.rl_y = seg[1][1]
                 if seg[1][0] < seg[2][0]:  # from left to right
                     self.rl_x = seg[1][0] + seg_x
                     self.rl_cosh = 1
                     self.rl_sinh = 0
+                    self.heading= 0
                 else:  # from right to left
                     self.rl_x = seg[1][0] - seg_x
                     self.rl_cosh = -1
                     self.rl_sinh = 0
+                    self.heading= math.pi
         else:  # circular curve
             if seg[5][0] < seg[5][1]:  # Trajectory counterclockwise
                 print("top")
@@ -212,6 +217,8 @@ class DresnerVehicle(BaseVehicle):
                 temp = self.rl_cosh
                 self.rl_cosh = self.rl_sinh
                 self.rl_sinh = temp
+                self.heading = rotation / 180 * math.pi
+                self.heading = (self.heading + math.pi/2 + 2*math.pi)% (2 * math.pi)
             else:
                 print("bottom")
                 rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
@@ -222,6 +229,8 @@ class DresnerVehicle(BaseVehicle):
                 temp = self.rl_cosh
                 self.rl_cosh = -self.rl_sinh
                 self.rl_sinh = -temp
+                self.heading = rotation / 180 * math.pi
+                self.heading = (self.heading - math.pi/2 + 2*math.pi) % (2 * math.pi)
 
         self.rl_y = -self.rl_y
 
@@ -310,6 +319,7 @@ class DresnerVehicle(BaseVehicle):
                 print("rl_vy is: ",self.rl_vy)
                 print("rl_cosh is: ",self.rl_cosh)
                 print("rl_sinh is: ",self.rl_sinh)
+                print("heading is: ",self.heading)
 
             # Check if the vehicle is marked as faulty
             if self.faultyCar and self.timestep >= self.faultTime:

@@ -60,6 +60,10 @@ class AgentInference(object):
         # Assuming the environment has a method to translate the action into a human-readable format
         actions = [self.agent.env.action_type.get_action(self.agent.env.getActionJames(a)) for a in action]
         return actions
+    
+    def get_agent_action(self, state):
+        action = self.get_action(state)
+        return self.translate_action(action)
 
 class VehicleInterface(object):
     def __init__(self,speed, heading,):
@@ -71,3 +75,7 @@ class VehicleInterface(object):
     def vehicle_do_action(self, action):
         self.vehicle.act(action)
         self.vehicle.step(veh_dt)
+
+    def get_state(self, action):
+        self.vehicle_do_action(action)
+        return self.get_state_post_action()
