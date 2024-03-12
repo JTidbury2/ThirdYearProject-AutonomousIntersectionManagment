@@ -162,6 +162,21 @@ class DresnerVehicle(BaseVehicle):
         self.rl_sinh = 0
         self.heading = 0
 
+    def get_veh_rl_values(self):
+        self.update_rl_values()
+        return {
+            "presence": 1,
+            "veh_id": self._id,
+            "x": self.rl_x,
+            "y": self.rl_y,
+            "vx": self.rl_vx,
+            "vy": self.rl_vy,
+            "cosh": self.rl_cosh,
+            "sinh": self.rl_sinh,
+            "heading": self.heading,
+            "speed": self.inst_v,
+        }
+
 
 
 
@@ -310,7 +325,7 @@ class DresnerVehicle(BaseVehicle):
                 self.inst_a = min(self.acc_with_lead_veh(lead_veh), self.cf_model.acc_from_model(self.inst_v, - self.inst_x - self.veh_len_front, 0))
         elif self.zone == 'ju':
             # check rl values 
-            self.update_rl_values()
+
             if self._id == 0:
                 print("Timstep is: ",self.timestep)
                 print("rl_x is: ",self.rl_x)

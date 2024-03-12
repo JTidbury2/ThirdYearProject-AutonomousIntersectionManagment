@@ -5,6 +5,9 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import sys
 from pathlib import Path
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+
+Vector = Union[np.ndarray, Sequence[float]]
 
 # Get the parent directory of the current Jupyter notebook's directory
 parent_dir = Path().resolve().parent
@@ -17,8 +20,6 @@ rl_agents_dir = Path('PettingZooSim') / 'HighwayEnv'
 # Add the 'rl-agents' directory to sys.path
 sys.path.append(str(rl_agents_dir))
 
-
-from highway_env.utils import Vector
 from rl_objects import RoadObject
 
 
@@ -149,6 +150,7 @@ class Vehicle(RoadObject):
             "heading": self.heading,
             "cos_h": self.direction[0],
             "sin_h": self.direction[1],
+            "speed": self.speed,
         }
         if not observe_intentions:
             d["cos_d"] = d["sin_d"] = 0

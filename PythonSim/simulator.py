@@ -8,6 +8,8 @@ import random
 
 import numpy as np
 
+from rl_agent import AgentInference, VehicleInterface
+
 class Simulator:
     _instance = None
 
@@ -31,6 +33,14 @@ class Simulator:
         self.crash_count=0
         self.crash_time=2000
         self.sim_over=False
+        self.rl_swap = False
+        self.rl_OBS_COUNT = 15
+        self.veh_rl_values = {}
+        self.veh_rl_obs = {}
+        self.veh_rl_actions = {}
+        self.veh_rl_updated_values = {}
+        self.rl_agent = None
+        self.rl_vehicle = None 
 
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
@@ -49,6 +59,75 @@ class Simulator:
             'ju': []
         }
         self.vehicleCount=0
+
+        self.set_up_rlAgent()
+
+    def set_up_rlAgent(self):
+        env_config = '../PettingZooSim/rl_agents/rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
+        agent_config = '../PettingZooSim/rl_agents/rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
+        model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
+        self.rl_agent= AgentInference(env_config, agent_config, model_path)
+
+    def set_up_rlVehicle(self):
+        temp = np.array([0,0])
+        self.rl_vehicle = VehicleInterface(temp,0,0)
+
+
+    def rl_update(self):
+        for veh in self.all_veh["ju"]:
+            if veh._id in self.veh_rl_values:
+                self.veh_rl_values[veh._id] = veh.get_veh_rl_values()
+        if self.rl_swap:
+            self.rl_get_obs()
+            self.rl_get_action()
+            self.rl_update_pos_after_action()
+            
+
+    def rl_update_pos_after_action(self):
+        for veh in self.all_veh["ju"]:
+            temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
+            self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["v"], self.veh_rl_values[veh._id]["h"])
+            self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state(self.veh_rl_actions[veh._id])
+            self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
+
+
+
+    def rl_get_obs(self):
+        for ego_veh in self.all_veh["ju"]:
+            obs = []
+            sorted_veh = sorted(self.all_veh["ju"], key=lambda veh: self.get_distance(veh.rl_x, veh.rl_y, ego_veh.rl_x, ego_veh.rl_y))
+            count=0
+            for veh in sorted_veh:
+                if count < self.rl_OBS_COUNT:
+                    veh_rl_values = self.veh_rl_values[veh._id]
+                    obs.append([veh_rl_values["presence"], veh_rl_values["x"], veh_rl_values["y"], veh_rl_values["vx"], veh_rl_values["vy"], veh_rl_values["cos_h"], veh_rl_values["sin_h"]])
+                    count+=1
+                else:
+                    break
+
+            while count < self.rl_OBS_COUNT:
+                obs.append([0] * len(obs[0]))
+                count+=1
+
+            self.veh_rl_obs[ego_veh._id] = obs
+
+
+
+    def get_distance(self, x1, y1, x2, y2):
+        return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    
+
+    def rl_get_action(self):
+        for veh in self.all_veh["ju"]:
+            actions= self.rl_agent.get_agent_action(self.veh_rl_obs[veh._id])
+            self.veh_rl_actions[veh._id] = actions
+
+
+
+
+
+
+
 
     def update(self):
         self.check_for_collisions()
@@ -71,6 +150,8 @@ class Simulator:
             #finsh the simulation
             #insert code here 
             self.sim_over=True
+
+
 
     def switch_to_rl(self):
         for group, vehs in self.all_veh.items():

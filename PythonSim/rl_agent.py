@@ -13,6 +13,8 @@ from lib.settings import veh_dt
 import sys
 from pathlib import Path
 
+from rl_kinematics import Vehicle
+
 # Get the parent directory of the current Jupyter notebook's directory
 parent_dir = Path().resolve().parent
 
@@ -34,8 +36,8 @@ import highway_env
 
 class AgentInference(object):
     def __init__(self,env_config, agent_config, model_path):
-        env=load_environment(env_config)
-        self.agent = load_agent(agent_config, env)  # No environment needed for inference
+        self.env=load_environment(env_config)
+        self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
         self.load_agent_model(model_path)
         self.agent.eval()
 
@@ -66,11 +68,21 @@ class AgentInference(object):
         return self.translate_action(action)
 
 class VehicleInterface(object):
-    def __init__(self,speed, heading,):
-        self.vehicle = None 
+    def __init__(self,position,speed, heading,):
+        self.vehicle = Vehicle(position,speed, heading)
     def get_state_post_action(self):
         d= self.vehicle.to_dict()
-        return d["x"], d["y"] , self.vehicle.speed, d["vx"], d["xy"], d["cos_h"], d["sin_h"]
+        return {
+            "presence": 1,
+            "x": d["x"],
+            "y": d["y"],
+            "vx": d["vx"],
+            "vy": d["vy"],
+            "cosh": d["cos_h"],
+            "sinh": d["sin_h"],
+            "heading": d["heading"],
+            "speed": d["speed"],
+        }
     
     def vehicle_do_action(self, action):
         self.vehicle.act(action)
@@ -79,3 +91,9 @@ class VehicleInterface(object):
     def get_state(self, action):
         self.vehicle_do_action(action)
         return self.get_state_post_action()
+    
+    def update_vehicle_values(self, position, speed, heading):
+        self.vehicle.position = position
+        self.vehicle.speed = speed
+        self.vehicle.heading = heading
+        

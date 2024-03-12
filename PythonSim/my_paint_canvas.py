@@ -277,6 +277,7 @@ class MyPaintCanvas(QWidget):
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
             # qp.drawText(rect.bottomLeft(), str(veh._id))
+        if Simulator.ge# if different mode rendre different mode
         for veh in Simulator.getInstance().all_veh['ju']:
             if veh.faultyCar and veh.collidedCar:
                 qp.setBrush(QColor(255, 0, 0))
