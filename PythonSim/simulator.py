@@ -42,6 +42,8 @@ class Simulator:
         self.rl_agent = None
         self.rl_vehicle = None 
 
+        self.set_up_rlAgent()
+
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
         # For vehicle queues that are not placed in the simulation area for each lane, refer to the Meng2018Analysis article
@@ -60,11 +62,11 @@ class Simulator:
         }
         self.vehicleCount=0
 
-        self.set_up_rlAgent()
+        
 
     def set_up_rlAgent(self):
-        env_config = '../PettingZooSim/rl_agents/rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
-        agent_config = '../PettingZooSim/rl_agents/rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
+        env_config = '../rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
+        agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
         model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
         self.rl_agent= AgentInference(env_config, agent_config, model_path)
 

@@ -7,6 +7,7 @@ from gymnasium.wrappers import RecordVideo
 from IPython import display as ipythondisplay
 from pyvirtualdisplay import Display
 from lib.settings import veh_dt
+import os
 
 
 
@@ -19,12 +20,13 @@ from rl_kinematics import Vehicle
 parent_dir = Path().resolve().parent
 
 # Construct the path to the 'rl-agents' folder
-rl_agents_dir = parent_dir / 'rl-agents'
+rl_agents_dir = parent_dir / 'PettingZooSim/rl-agents'
+print("rl_agnets,dric",rl_agents_dir)
 
 # Add the 'rl-agents' directory to sys.path
 sys.path.append(str(rl_agents_dir))
 
-highway_env_dir = parent_dir / 'HighwayEnv'
+highway_env_dir = parent_dir / 'PettingZooSim/HighwayEnv'
 
 sys.path.append(str(highway_env_dir))
 
@@ -32,14 +34,17 @@ from rl_agents.agents.common.factory import load_agent, load_environment
 
 import highway_env
 
+highway_env.register_highway_envs()
 
 
 class AgentInference(object):
     def __init__(self,env_config, agent_config, model_path):
+        os.chdir('../PettingZooSim/HighwayEnv')
         self.env=load_environment(env_config)
         self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
         self.load_agent_model(model_path)
         self.agent.eval()
+        os.chdir('../../PythonSim')
 
     def load_agent_model(self, model_path):
         if isinstance(model_path, str):

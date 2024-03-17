@@ -277,7 +277,20 @@ class MyPaintCanvas(QWidget):
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
             # qp.drawText(rect.bottomLeft(), str(veh._id))
-        if Simulator.ge# if different mode rendre different mode
+        # if Simulator.getInstance().rl_swap:
+        #     for veh in Simulator.getInstance().all_veh['ju']:
+        #         if veh.faultyCar and veh.collidedCar:
+        #             qp.setBrush(QColor(255, 0, 0))
+        #         elif veh.faultyCar:
+        #             qp.setBrush(QColor(0, 255, 0))
+        #         elif veh.collidedCar:
+        #             qp.setBrush(QColor(0, 0, 255))
+        #         else:
+        #             qp.setBrush(QColor(49, 58, 135))
+
+        #         qp.save()
+
+        # else: 
         for veh in Simulator.getInstance().all_veh['ju']:
             if veh.faultyCar and veh.collidedCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -331,6 +344,7 @@ class MyPaintCanvas(QWidget):
                         qp.drawText(rect.bottomLeft(), str(veh._id))
             else: # circular curve
                 qp.save()
+                print("Paint seg,", seg)
                 qp.translate(seg[3][0], seg[3][1])
                 if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
                     rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
