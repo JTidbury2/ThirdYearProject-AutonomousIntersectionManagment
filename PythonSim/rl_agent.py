@@ -32,6 +32,7 @@ sys.path.append(str(highway_env_dir))
 
 from rl_agents.agents.common.factory import load_agent, load_environment
 
+
 import highway_env
 
 highway_env.register_highway_envs()
@@ -41,9 +42,9 @@ class AgentInference(object):
     def __init__(self,env_config, agent_config, model_path):
         os.chdir('../PettingZooSim/HighwayEnv')
         self.env=load_environment(env_config)
-        self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
-        self.load_agent_model(model_path)
-        self.agent.eval()
+        #self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
+        #self.load_agent_model(model_path)
+        #self.agent.eval()
         os.chdir('../../PythonSim')
 
     def load_agent_model(self, model_path):

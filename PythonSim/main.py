@@ -4,6 +4,15 @@ import logging
 import os
 
 import lib.settings
+from rl_agent import AgentInference
+
+
+env_config = '../rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
+agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
+model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
+rl_agent_export= AgentInference(env_config, agent_config, model_path)
+
+
 
 def exec_simulation():
     from PyQt5.QtWidgets import QApplication
@@ -22,6 +31,9 @@ def exec_simulation():
     logging.basicConfig(filename=log_fname, format='%(message)s', level=logging.DEBUG)
     logging.debug('t, veh._id, zone, lane, x, v, a')
     print(log_fname)
+
+
+
 
     app = QApplication(sys.argv)
     window = MyMainWindow()
@@ -79,6 +91,7 @@ if __name__ == '__main__':
     }
     print('## %d = 4 * (%d + %d + %d)' % (total_flow, l_flow, t_flow, r_flow))
     print(lib.settings.veh_gen_rule_table)
+
 
     exec_simulation()
 

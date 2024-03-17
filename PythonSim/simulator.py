@@ -5,7 +5,7 @@ from vehicle import Vehicle
 from inter_manager import inter_manager
 from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
 import random
-
+from main import rl_agent_export
 import numpy as np
 
 from rl_agent import AgentInference, VehicleInterface
@@ -39,10 +39,9 @@ class Simulator:
         self.veh_rl_obs = {}
         self.veh_rl_actions = {}
         self.veh_rl_updated_values = {}
-        self.rl_agent = None
+        self.rl_agent = rl_agent_export
         self.rl_vehicle = None 
 
-        self.set_up_rlAgent()
 
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
