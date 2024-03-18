@@ -129,11 +129,58 @@ class DresnerManager(BaseInterManager):
 
         return i, j 
     
+    def rl_get_grid_location(self,veh):
+        x = veh.rl_x
+        y = veh.rl_y
+        cosh = veh.rl_cosh
+        sinh = veh.rl_sinh
+
+        # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
+        veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \
+            0.4, veh.speed * 0.1)
+        veh_dots_x_rt = veh_dots_x * cosh - veh_dots_y * sinh
+        veh_dots_y_rt = veh_dots_y * cosh + veh_dots_x * sinh
+        veh_dots_x_rt += x
+        veh_dots_y_rt += y
+        i, j = self.running_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+
+        return i, j 
+    
     def check_for_collision(self,all_vehicles):
         crashed_Vehicle_ID=[]
         if self.crash_happened:
             for veh in all_vehicles:
                 i,j = self.get_grid_location(veh)
+
+                for idx in range(len(i)):
+                    current_cell = self.get_grid_cells()[i[idx], j[idx], 0]  # Access the current cell
+                    
+                    if current_cell != -1 and current_cell != veh._id:  # If the cell is occupied by another vehicle
+                        if current_cell not in crashed_Vehicle_ID:  # If the occupying vehicle is not already in the list
+                            crashed_Vehicle_ID.append(current_cell)  # Add the occupying vehicle ID to the list
+
+                        if veh._id not in crashed_Vehicle_ID:  # If the current vehicle is not already in the list
+                            crashed_Vehicle_ID.append(veh._id)  # Add the current vehicle ID to the list
+
+                        reply_message = {'type': 'collision'}
+                        ComSystem.I2V(veh, reply_message)  # Send a collision message to the current vehicle
+
+                        # Assuming you have a way to send messages to other vehicles by ID
+                        ComSystem.I2V(self.get_vehicle_by_id(current_cell,all_vehicles), reply_message)  # Send a collision message to the occupying vehicle
+
+                    # Update the cell to indicate it's now occupied by the current vehicle
+                    self.get_grid_cells()[i[idx], j[idx], 0] = veh._id
+            self.running_grid.reset_grid()
+
+        logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
+        return crashed_Vehicle_ID
+    
+    def rl_check_for_collision(self,all_vehicles):
+        crashed_Vehicle_ID=[]
+        self.crash_happened = True # TODO CHange this
+        if self.crash_happened:
+            for veh in all_vehicles:
+                i,j = self.rl_get_grid_location(veh)
 
                 for idx in range(len(i)):
                     current_cell = self.get_grid_cells()[i[idx], j[idx], 0]  # Access the current cell

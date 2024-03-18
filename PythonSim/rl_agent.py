@@ -42,9 +42,9 @@ class AgentInference(object):
     def __init__(self,env_config, agent_config, model_path):
         os.chdir('../PettingZooSim/HighwayEnv')
         self.env=load_environment(env_config)
-        #self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
-        #self.load_agent_model(model_path)
-        #self.agent.eval()
+        self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
+        self.load_agent_model(model_path)
+        self.agent.eval()
         os.chdir('../../PythonSim')
 
     def load_agent_model(self, model_path):
@@ -66,12 +66,12 @@ class AgentInference(object):
 
     def translate_action(self, action):
         # Assuming the environment has a method to translate the action into a human-readable format
-        actions = [self.agent.env.action_type.get_action(self.agent.env.getActionJames(a)) for a in action]
+        actions = [self.agent.env.action_type.get_action(self.agent.env.action_type.getActionJames(a)) for a in action]
         return actions
     
     def get_agent_action(self, state):
         action = self.get_action(state)
-        return self.translate_action(action)
+        return self.translate_action([action])
 
 class VehicleInterface(object):
     def __init__(self,position,speed, heading,):
@@ -91,7 +91,7 @@ class VehicleInterface(object):
         }
     
     def vehicle_do_action(self, action):
-        self.vehicle.act(action)
+        self.vehicle.act(action[0])
         self.vehicle.step(veh_dt)
 
     def get_state(self, action):

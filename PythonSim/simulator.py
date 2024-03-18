@@ -2,13 +2,14 @@ import copy
 import logging
 
 from vehicle import Vehicle
-from inter_manager import inter_manager
-from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
+from inter_manager import inter_manager, ComSystem
+from lib.settings import lane_width, turn_radius, arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
 import random
 from main import rl_agent_export
 import numpy as np
-
+import math
 from rl_agent import AgentInference, VehicleInterface
+
 
 class Simulator:
     _instance = None
@@ -33,7 +34,7 @@ class Simulator:
         self.crash_count=0
         self.crash_time=2000
         self.sim_over=False
-        self.rl_swap = False
+        self.rl_swap = True
         self.rl_OBS_COUNT = 15
         self.veh_rl_values = {}
         self.veh_rl_obs = {}
@@ -41,6 +42,7 @@ class Simulator:
         self.veh_rl_updated_values = {}
         self.rl_agent = rl_agent_export
         self.rl_vehicle = None 
+        self.set_up_rlVehicle()
 
 
         # Generate vehicle counts for vehicle ID assignment
@@ -75,33 +77,66 @@ class Simulator:
 
 
     def rl_update(self):
+        # print("-------------------")
+        # print(self.timestep)
+        # print("-------------------")
         for veh in self.all_veh["ju"]:
-            if veh._id in self.veh_rl_values:
+            if veh._id not in self.veh_rl_values and not veh.collidedCar:
                 self.veh_rl_values[veh._id] = veh.get_veh_rl_values()
+        # print("Rl_values: ", self.veh_rl_values)
         if self.rl_swap:
             self.rl_get_obs()
+            # print("Obs: ",self.veh_rl_obs)
             self.rl_get_action()
+            # print("Actions: ",self.veh_rl_actions)
             self.rl_update_pos_after_action()
+            # print("Updated Values: ",self.veh_rl_updated_values)
+
+    def rl_check_road_violation(self):
+        x_limit = 3* lane_width + turn_radius
+        y_limit = 3* lane_width + turn_radius
+        for veh in self.all_veh["ju"]:
+            if veh.rl_x < -x_limit or veh.rl_x > x_limit or veh.rl_y < -y_limit or veh.rl_y > y_limit:
+
+                reply_message = {'type': 'collision'}
+                ComSystem.I2V(veh, reply_message)  
+
+
             
 
     def rl_update_pos_after_action(self):
         for veh in self.all_veh["ju"]:
+            if veh.collidedCar:
+                continue
             temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
-            self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["v"], self.veh_rl_values[veh._id]["h"])
+            self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
             self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state(self.veh_rl_actions[veh._id])
             self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
+            veh.update_vehicle_values(
+                self.veh_rl_updated_values[veh._id]["x"], 
+                self.veh_rl_updated_values[veh._id]["y"], 
+                self.veh_rl_updated_values[veh._id]["vx"],
+                self.veh_rl_updated_values[veh._id]["vy"],
+                self.veh_rl_updated_values[veh._id]["cosh"],
+                self.veh_rl_updated_values[veh._id]["sinh"],
+                self.veh_rl_updated_values[veh._id]["heading"] % (2 * math.pi),
+            )
+            self.veh_rl_values[veh._id] = self.veh_rl_updated_values[veh._id]
+
 
 
 
     def rl_get_obs(self):
         for ego_veh in self.all_veh["ju"]:
+            if ego_veh.collidedCar:
+                continue
             obs = []
             sorted_veh = sorted(self.all_veh["ju"], key=lambda veh: self.get_distance(veh.rl_x, veh.rl_y, ego_veh.rl_x, ego_veh.rl_y))
             count=0
             for veh in sorted_veh:
-                if count < self.rl_OBS_COUNT:
+                if count < self.rl_OBS_COUNT and not veh.collidedCar:
                     veh_rl_values = self.veh_rl_values[veh._id]
-                    obs.append([veh_rl_values["presence"], veh_rl_values["x"], veh_rl_values["y"], veh_rl_values["vx"], veh_rl_values["vy"], veh_rl_values["cos_h"], veh_rl_values["sin_h"]])
+                    obs.append([veh_rl_values["presence"], veh_rl_values["x"], veh_rl_values["y"], veh_rl_values["vx"], veh_rl_values["vy"], veh_rl_values["cosh"], veh_rl_values["sinh"]])
                     count+=1
                 else:
                     break
@@ -120,20 +155,20 @@ class Simulator:
 
     def rl_get_action(self):
         for veh in self.all_veh["ju"]:
+            if veh.collidedCar:
+                continue
             actions= self.rl_agent.get_agent_action(self.veh_rl_obs[veh._id])
             self.veh_rl_actions[veh._id] = actions
 
 
-
-
-
-
-
-
     def update(self):
+        self.rl_update()
         self.check_for_collisions()
+        self.rl_check_road_violation()
+
         self.timestep += 1
         # print('Timestep: %d' % self.timestep)
+
         to_switch_group = self.all_update_position()
         # print('all_update_position')
         self.update_group(to_switch_group)
@@ -162,16 +197,19 @@ class Simulator:
 
 
 
+
     def check_for_collisions(self):
-        crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
-        
+        if self.rl_swap:
+            crashed_vehicles= inter_manager.rl_check_for_collision(self.all_veh["ju"])
+        else:
+            crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         self.crash_count= len(crashed_vehicles)
         if inter_manager.check_for_collision_noCars() and self.crash_time==2000:
             self.crash_time=self.timestep+200
 
 
         if self.crash_count>0:
-            # print(crashed_vehicles)
+            print(crashed_vehicles)
             pass
 
     def check_for_finish(self):
@@ -183,10 +221,13 @@ class Simulator:
         '''For the vehicles in all_veh, update the location and record the vehicles whose grouping has changed'''
         to_switch_group = []
         for group, vehs in self.all_veh.items():
-            for veh in vehs:
-                switch_group = veh.update_position(veh_dt)
-                if switch_group:
-                    to_switch_group.append([veh, group])
+            if group == 'ju' and self.rl_swap:
+                pass
+            else:
+                for veh in vehs:
+                    switch_group = veh.update_position(veh_dt)
+                    if switch_group:
+                        to_switch_group.append([veh, group])
         return to_switch_group
     
     def update_group(self, to_switch_group):
@@ -273,7 +314,7 @@ class Simulator:
                         if vehs[j].inst_lane == veh.inst_lane:
                             lead_veh = vehs[j]
                             break
-                else: # At the intersection, there is no concept of lanes here, but in order to prevent two cars with the same trajectory from colliding, they are still considered to be in the same lane.
+                elif not self.rl_swap : # At the intersection, there is no concept of lanes here, but in order to prevent two cars with the same trajectory from colliding, they are still considered to be in the same lane.
                     for j in range(i+1, len(vehs)):
                         if vehs[j].track.ap_arm == veh.track.ap_arm and vehs[j].track.ap_lane == veh.track.ap_lane \
                             and vehs[j].track.turn_dir == veh.track.turn_dir and vehs[j].track.ex_lane == veh.track.ex_lane:

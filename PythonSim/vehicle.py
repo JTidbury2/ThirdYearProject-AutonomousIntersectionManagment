@@ -161,6 +161,18 @@ class DresnerVehicle(BaseVehicle):
         self.rl_cosh = 0
         self.rl_sinh = 0
         self.heading = 0
+        self.speed = 0
+
+    def update_vehicle_values(self, x,y,vx,vy,cosh,sinh,heading):
+        self.rl_x = x
+        self.rl_y = y
+        self.rl_vx = vx
+        self.rl_vy = vy
+        self.rl_cosh = cosh
+        self.rl_sinh = sinh
+        self.heading = heading
+        self.speed = math.sqrt(vx**2 + vy**2)
+
 
     def get_veh_rl_values(self):
         self.update_rl_values()
@@ -173,7 +185,7 @@ class DresnerVehicle(BaseVehicle):
             "vy": self.rl_vy,
             "cosh": self.rl_cosh,
             "sinh": self.rl_sinh,
-            "heading": self.heading,
+            "heading": self.heading % (2 * math.pi),
             "speed": self.inst_v,
         }
 
@@ -195,7 +207,7 @@ class DresnerVehicle(BaseVehicle):
             seg_x = self.inst_x - self.track.ju_shape_end_x[seg_idx - 1]
         else:
             seg_x = self.inst_x
-        print("seg is ",seg)
+        # print("seg is ",seg)
         if seg[0] == 'line':
             if abs(seg[1][0] - seg[2][0]) < 1e-5:  # vertical line
                 self.rl_x = seg[1][0]
@@ -223,7 +235,7 @@ class DresnerVehicle(BaseVehicle):
                     self.heading= math.pi
         else:  # circular curve
             if seg[5][0] < seg[5][1]:  # Trajectory counterclockwise
-                print("top")
+                # print("top")
                 rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
                 self.rl_cosh = math.cos(-rotation / 180 * math.pi)
                 self.rl_sinh = math.sin(-rotation / 180 * math.pi)
@@ -235,7 +247,7 @@ class DresnerVehicle(BaseVehicle):
                 self.heading = rotation / 180 * math.pi
                 self.heading = (self.heading + math.pi/2 + 2*math.pi)% (2 * math.pi)
             else:
-                print("bottom")
+                # print("bottom")
                 rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
                 self.rl_cosh = math.cos(-rotation / 180 * math.pi)
                 self.rl_sinh = math.sin(-rotation / 180 * math.pi)
@@ -327,14 +339,15 @@ class DresnerVehicle(BaseVehicle):
             # check rl values 
 
             if self._id == 0:
-                print("Timstep is: ",self.timestep)
-                print("rl_x is: ",self.rl_x)
-                print("rl_y is: ",self.rl_y)
-                print("rl_vx is: ",self.rl_vx)
-                print("rl_vy is: ",self.rl_vy)
-                print("rl_cosh is: ",self.rl_cosh)
-                print("rl_sinh is: ",self.rl_sinh)
-                print("heading is: ",self.heading)
+                # print("Timstep is: ",self.timestep)
+                # print("rl_x is: ",self.rl_x)
+                # print("rl_y is: ",self.rl_y)
+                # print("rl_vx is: ",self.rl_vx)
+                # print("rl_vy is: ",self.rl_vy)
+                # print("rl_cosh is: ",self.rl_cosh)
+                # print("rl_sinh is: ",self.rl_sinh)
+                # print("heading is: ",self.heading)
+                pass
 
             # Check if the vehicle is marked as faulty
             if self.faultyCar and self.timestep >= self.faultTime:
@@ -387,6 +400,9 @@ class DresnerVehicle(BaseVehicle):
             self.collidedCar=True
             self.inst_a=0
             self.inst_v=0
+            self.rl_vx=0
+            self.rl_vy=0
+            self.speed=0
 
     def receive_broadcast(self, message):
         if message["type"] =="crash":

@@ -94,9 +94,9 @@ class Vehicle(RoadObject):
             self.impact = None
         self.heading += self.speed * np.sin(beta) / (self.LENGTH / 2) * dt
         self.speed += self.action["acceleration"] * dt
-        self.on_state_update()
 
     def clip_actions(self) -> None:
+        print("self.action", self.action)
         if self.crashed:
             self.action["steering"] = 0
             self.action["acceleration"] = -1.0 * self.speed
@@ -109,7 +109,11 @@ class Vehicle(RoadObject):
         elif self.speed < self.MIN_SPEED:
             self.action["acceleration"] = max(
                 self.action["acceleration"], 1.0 * (self.MIN_SPEED - self.speed)
+
+
             )
+
+
 
     def predict_trajectory_constant_speed(
         self, times: np.ndarray
