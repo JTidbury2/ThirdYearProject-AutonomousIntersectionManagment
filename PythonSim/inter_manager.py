@@ -7,6 +7,7 @@ from map import Map, Track
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+from rl_agent import VehicleInterface
 
 class BaseInterManager:
     def __init__(self):
@@ -70,6 +71,15 @@ class DresnerManager(BaseInterManager):
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
+        self.evasion_plan_DB= {}
+        self.grid_veh_values = {}
+        self.evasion_plan_grid_db = {}
+        self.rl_vehicle=None
+
+    def set_up_rlVehicle(self):
+        temp = np.array([0,0])
+        self.rl_vehicle = VehicleInterface(temp,0,0)
+
 
     def update(self):
         super().update()
@@ -406,6 +416,87 @@ class DresnerManager(BaseInterManager):
                     'exit_time': exit_time_const_v   # Include the calculated exit time
                 }
         return None
+    
+    def check_evasion(self, t_start, t_end):
+        for t in range(t_start, t_end):
+            for veh in range(self.grid_veh_values[t]):
+                self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1)
+                self.evasion_plan_DB[(veh,t)]=[]
+                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"])
+                self.dfs_evasion(veh,t,self.grid_veh_values[t])
+
+    def dfs_evasion(self, sigma, time, vehs):
+        if sigma == vehs[0]:
+            return self.dfs_evasion(sigma,time,vehs[1:])
+        if len(vehs)==0:
+            return True
+        veh = vehs[0]
+        grid= self.evasion_plan_grid_db[(sigma,time)]
+        for steer in [math.pi/4,0,-math.pi/4]:
+            if self.check_cells_evasion(veh,time,self.grid_veh_values[time][veh]["position"][0],self.grid_veh_values[time][veh]["position"][1],self.grid_veh_values[time][veh]["speed"],self.grid_veh_values[time][veh]["heading"],{'acceleration': -10, 'steering': steer},self.grid_veh_values[time][veh]["veh_wid"],self.grid_veh_values[time][veh]["veh_len"],self.grid_veh_values[time][veh]["veh_len_front"]):
+                if self.dfs_evasion(sigma,time,vehs[1:]):
+                    self.evasion_plan_DB[(sigma,time)][veh["id"]]=steer
+                    return True
+
+        return False
+    #heading in degrees
+    def check_cells_evasion(self,sigma,time, x,y,speed,heading,action, veh_wid, veh_len, veh_len_front):
+        t=0
+        grid = self.evasion_plan_grid_db[(sigma,time)]
+        angle= heading
+        x,y = x,y
+        veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
+        veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+        veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+        veh_dots_x_rt += x
+        veh_dots_y_rt += y
+        
+        #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+        i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+        t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
+        while t_slice[0] >= self.grid.cells.shape[2]:
+            self.grid.add_time_dimension()
+        
+        # Check whether all occupied grid points are empty
+        if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
+            self.grid.cells[i, j, t_slice] = 1
+
+        else:
+            # Planning failed, return False after clearing traces
+            self.grid.clear_veh_cell(1)
+            return False
+        temp = np.array([x,y])
+        self.rl_vehicle.update_vehicle_values(temp,speed,heading)
+        while self.rl_vehicle.speed > 0:
+            state = self.rl_vehicle.get_state(action)
+            t=t+1
+
+            angle= state["heading"]
+            x,y = state["x"],state["y"]
+            veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
+            veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+            veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+            veh_dots_x_rt += x
+            veh_dots_y_rt += y
+            
+            #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+            i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
+            while t_slice[0] >= self.grid.cells.shape[2]:
+                self.grid.add_time_dimension()
+            
+            # Check whether all occupied grid points are empty
+            if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
+                self.grid.cells[i, j, t_slice] = 1
+                return True
+
+            else:
+
+                return False
+
+
+
+        
 
             
     def check_cells_stepwise(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc):
@@ -414,7 +505,8 @@ class DresnerManager(BaseInterManager):
         x_1d = 0 # One dimensional positon along junciton path
         a_idx = 0 # Acceleration index
         seg_idx = 0 # Segment index
-
+        veh_traverse_values = {}
+         
         while x_1d <= ju_shape_end_x[-1]:
             # Calculate the vehicle xy coordinates and direction
             seg = ju_track[seg_idx]
@@ -458,6 +550,7 @@ class DresnerManager(BaseInterManager):
             veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
             veh_dots_x_rt += x
             veh_dots_y_rt += y
+            veh_traverse_values[t]={"position":(x,y),"speed":v,"heading":angle,"veh_wid":message['veh_wid'],"veh_len":message['veh_len'],"veh_len_front":message['veh_len_front'],"id":message['veh_id']}
             
             #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
             i, j = self.res_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
@@ -468,6 +561,8 @@ class DresnerManager(BaseInterManager):
             # Check whether all occupied grid points are empty
             if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
                 self.res_grid.cells[i, j, t_slice] = message['veh_id']
+                for key, value in veh_traverse_values.items():
+                    self.grid_veh_values[key][message["veh_id"]]=value
                 # if message['veh_id']==1:
                 #     print('i:',i)
                 #     print('j:',j)
