@@ -34,7 +34,7 @@ class Simulator:
         self.crash_count=0
         self.crash_time=2000
         self.sim_over=False
-        self.rl_swap = True
+        self.rl_swap = False
         self.rl_OBS_COUNT = 15
         self.veh_rl_values = {}
         self.veh_rl_obs = {}

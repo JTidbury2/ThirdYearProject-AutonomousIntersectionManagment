@@ -75,6 +75,7 @@ class DresnerManager(BaseInterManager):
         self.grid_veh_values = {}
         self.evasion_plan_grid_db = {}
         self.rl_vehicle=None
+        self.set_up_rlVehicle()
 
     def set_up_rlVehicle(self):
         temp = np.array([0,0])
@@ -398,49 +399,66 @@ class DresnerManager(BaseInterManager):
                 exit_velocity_const_v = message['arr_v']
 
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
-                return {
-                    'res_id': 0,  # Todo: Generate a unique reservation ID
-                    'ex_lane': ex_lane,
-                    'arr_t': message['arr_t'],
-                    'arr_v': message['arr_v'],
-                    'acc': acc_acc,
-                    'exit_time': exit_time_acc  # Include the calculated exit time
-                }
+                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
+                    return {
+                        'res_id': 0,  # Todo: Generate a unique reservation ID
+                        'ex_lane': ex_lane,
+                        'arr_t': message['arr_t'],
+                        'arr_v': message['arr_v'],
+                        'acc': acc_acc,
+                        'exit_time': exit_time_acc  # Include the calculated exit time
+                    }
+                else:
+                    print("-------------------------------------Rejected due to failed evasion")
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
-                return {
-                    'res_id': 0,  # Todo: Generate a unique reservation ID
-                    'ex_lane': ex_lane,
-                    'arr_t': message['arr_t'],
-                    'arr_v': message['arr_v'],
-                    'acc': acc_const_v,
-                    'exit_time': exit_time_const_v   # Include the calculated exit time
-                }
+                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
+                    return {
+                        'res_id': 0,  # Todo: Generate a unique reservation ID
+                        'ex_lane': ex_lane,
+                        'arr_t': message['arr_t'],
+                        'arr_v': message['arr_v'],
+                        'acc': acc_const_v,
+                        'exit_time': exit_time_const_v   # Include the calculated exit time
+                    }
+                else:
+                    print("----------------------------------------Rejected due to failed evasion")
         return None
     
     def check_evasion(self, t_start, t_end):
-        for t in range(t_start, t_end):
-            for veh in range(self.grid_veh_values[t]):
+        # print("t_start",t_start)
+        # print("t_end",t_end)
+        # print("Self.grid_veh_vlaues",self.grid_veh_values)
+        for t in range(round(t_start), round(t_end)):
+            for veh , value in self.grid_veh_values[t].items():
+
                 self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1)
-                self.evasion_plan_DB[(veh,t)]=[]
-                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"])
-                self.dfs_evasion(veh,t,self.grid_veh_values[t])
+                self.evasion_plan_DB[(veh,t)]={}
+                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
+                temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
+                if self.dfs_evasion(veh,t,temp):
+                    pass
+                else:
+                    return False
+            
+        return True
 
     def dfs_evasion(self, sigma, time, vehs):
-        if sigma == vehs[0]:
-            return self.dfs_evasion(sigma,time,vehs[1:])
-        if len(vehs)==0:
+        if not vehs:
             return True
-        veh = vehs[0]
+        temp = list(vehs.keys())[0]
+
+        veh = vehs[temp]
+        temps= {k: v for k, v in vehs.items() if k != temp}
         grid= self.evasion_plan_grid_db[(sigma,time)]
         for steer in [math.pi/4,0,-math.pi/4]:
-            if self.check_cells_evasion(veh,time,self.grid_veh_values[time][veh]["position"][0],self.grid_veh_values[time][veh]["position"][1],self.grid_veh_values[time][veh]["speed"],self.grid_veh_values[time][veh]["heading"],{'acceleration': -10, 'steering': steer},self.grid_veh_values[time][veh]["veh_wid"],self.grid_veh_values[time][veh]["veh_len"],self.grid_veh_values[time][veh]["veh_len_front"]):
-                if self.dfs_evasion(sigma,time,vehs[1:]):
+            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': 0, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
+                if self.dfs_evasion(sigma,time,temps):
                     self.evasion_plan_DB[(sigma,time)][veh["id"]]=steer
                     return True
 
         return False
     #heading in degrees
-    def check_cells_evasion(self,sigma,time, x,y,speed,heading,action, veh_wid, veh_len, veh_len_front):
+    def check_cells_evasion(self,sigma,time, x,y,speed,heading,action, veh_wid, veh_len, veh_len_front,vid):
         t=0
         grid = self.evasion_plan_grid_db[(sigma,time)]
         angle= heading
@@ -452,23 +470,23 @@ class DresnerManager(BaseInterManager):
         veh_dots_y_rt += y
         
         #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
-        i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
-        t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
-        while t_slice[0] >= self.grid.cells.shape[2]:
+        i, j = grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+        t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-grid.t_start))
+        while t_slice[0] >= grid.cells.shape[2]:
             self.grid.add_time_dimension()
         
         # Check whether all occupied grid points are empty
-        if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
-            self.grid.cells[i, j, t_slice] = 1
+        if np.sum(grid.cells[i, j, t_slice] != -1) == 0:
+            grid.cells[i, j, t_slice] = vid
 
         else:
             # Planning failed, return False after clearing traces
-            self.grid.clear_veh_cell(1)
+            grid.clear_veh_cell(vid)
             return False
         temp = np.array([x,y])
         self.rl_vehicle.update_vehicle_values(temp,speed,heading)
-        while self.rl_vehicle.speed > 0:
-            state = self.rl_vehicle.get_state(action)
+        while self.rl_vehicle.vehicle.speed > 0:
+            state = self.rl_vehicle.get_state([action])
             t=t+1
 
             angle= state["heading"]
@@ -480,18 +498,18 @@ class DresnerManager(BaseInterManager):
             veh_dots_y_rt += y
             
             #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
-            i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
-            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
-            while t_slice[0] >= self.grid.cells.shape[2]:
-                self.grid.add_time_dimension()
+            i, j = grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-grid.t_start))
+            while t_slice[0] >= grid.cells.shape[2]:
+                grid.add_time_dimension()
             
             # Check whether all occupied grid points are empty
-            if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
-                self.grid.cells[i, j, t_slice] = 1
+            if np.sum(grid.cells[i, j, t_slice] != -1) == 0:
+                grid.cells[i, j, t_slice] = vid
                 return True
 
             else:
-
+                grid.clear_veh_cell(vid)
                 return False
 
 
@@ -501,6 +519,7 @@ class DresnerManager(BaseInterManager):
             
     def check_cells_stepwise(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc):
         t = message['arr_t'] #Currtent time
+        # print("t",t)
         v = message['arr_v'] #Current speed
         x_1d = 0 # One dimensional positon along junciton path
         a_idx = 0 # Acceleration index
@@ -550,7 +569,7 @@ class DresnerManager(BaseInterManager):
             veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
             veh_dots_x_rt += x
             veh_dots_y_rt += y
-            veh_traverse_values[t]={"position":(x,y),"speed":v,"heading":angle,"veh_wid":message['veh_wid'],"veh_len":message['veh_len'],"veh_len_front":message['veh_len_front'],"id":message['veh_id']}
+            veh_traverse_values[round(t)]={"position":(x,y),"speed":v,"heading":angle,"veh_wid":message['veh_wid'],"veh_len":message['veh_len'],"veh_len_front":message['veh_len_front'],"id":message['veh_id']}
             
             #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
             i, j = self.res_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
@@ -561,8 +580,7 @@ class DresnerManager(BaseInterManager):
             # Check whether all occupied grid points are empty
             if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
                 self.res_grid.cells[i, j, t_slice] = message['veh_id']
-                for key, value in veh_traverse_values.items():
-                    self.grid_veh_values[key][message["veh_id"]]=value
+
                 # if message['veh_id']==1:
                 #     print('i:',i)
                 #     print('j:',j)
@@ -590,6 +608,10 @@ class DresnerManager(BaseInterManager):
                 return False
 
         self.res_grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
+        for key, value in veh_traverse_values.items():
+            if key not in self.grid_veh_values:
+                self.grid_veh_values[key]={}
+            self.grid_veh_values[key][message["veh_id"]]=value
         return True
     
 class GeneticReordering():
