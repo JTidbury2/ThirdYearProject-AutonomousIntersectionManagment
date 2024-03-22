@@ -96,7 +96,7 @@ class Vehicle(RoadObject):
         self.speed += max(self.action["acceleration"] * dt,0)
 
     def clip_actions(self) -> None:
-        print("self.action", self.action)
+        #print("self.action", self.action)
         if self.crashed:
             self.action["steering"] = 0
             self.action["acceleration"] = -1.0 * self.speed
@@ -109,7 +109,6 @@ class Vehicle(RoadObject):
         elif self.speed < self.MIN_SPEED:
             self.action["acceleration"] = max(
                 self.action["acceleration"], 1.0 * (self.MIN_SPEED - self.speed)
-
 
             )
 

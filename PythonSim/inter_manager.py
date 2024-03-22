@@ -265,12 +265,21 @@ class DresnerManager(BaseInterManager):
                 'res_id': message['res_id']
             })
         elif message["type"]== "fault":
-            self.crash_occured()
+            self.crash_occured(message["veh_id"])
 
-    def crash_occured(self):
+    def crash_occured(self,veh_id):
         self.crash_happened=True
         crashValues['crashOccured']=True
-        ComSystem.I_broadcast({'type': 'crash'})
+        print("Crash occured")
+        temp = None
+        if (veh_id,self.timestep) in self.evasion_plan_DB:
+            print("self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep)])
+            temp = self.evasion_plan_DB[(veh_id,self.timestep)]
+        else:
+
+            print("self.evasion_plan_DB",self.evasion_plan_DB[(veh_id,self.timestep+1)])
+            temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
+        ComSystem.I_broadcast({'type': 'crash'},temp)
 
     
 
@@ -1388,8 +1397,12 @@ class ComSystem:
         receiver.receive_I2V(message)
 
     @staticmethod
-    def I_broadcast(message):
+    def I_broadcast(message,evasive_manouves):
         for group, vehs in simulator.Simulator.getInstance().all_veh.items():
             for veh in vehs:
-                veh.receive_broadcast(message)
+                if veh._id in evasive_manouves.keys():
+                    message["evade"]= evasive_manouves[veh._id]
+                    veh.receive_broadcast(message)
+                else:
+                    veh.receive_broadcast(message)
         

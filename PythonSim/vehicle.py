@@ -162,6 +162,9 @@ class DresnerVehicle(BaseVehicle):
         self.rl_sinh = 0
         self.heading = 0
         self.speed = 0
+        self.flag=True
+        self.evasion=False
+        self.evadeDirection=None
 
     def update_vehicle_values(self, x,y,vx,vy,cosh,sinh,heading):
         self.rl_x = x
@@ -350,11 +353,12 @@ class DresnerVehicle(BaseVehicle):
                 pass
 
             # Check if the vehicle is marked as faulty
-            if self.faultyCar and self.timestep >= self.faultTime:
+            if self.faultyCar and self.timestep >= self.faultTime and self.flag:
                 ComSystem.V2I(self, {
                     'type': 'fault',
                     'veh_id': self._id
                 })
+                self.flag=False
                 # If the vehicle is faulty, initiate an immediate stop by applying maximum safe deceleration
                 self.inst_a = -10
                 # Optionally, log this event or take additional actions as necessary
@@ -410,10 +414,13 @@ class DresnerVehicle(BaseVehicle):
             if self.zone == 'ju':  # Check if the vehicle is in the junction zone
                 # Set the vehicle's acceleration to the maximum safe deceleration rate
                 self.inst_a = -self.max_dec
+                if "evade" in message.keys():
+                    self.evasion=True
+                    self.evadeDirection=message["evade"]
                 # Optionally, log this event or take additional actions as necessary
                 logging.info(f"Vehicle {self._id} stopping at max deceleration rate due to allStop broadcast.")
             elif self.zone == 'ap':  # Vehicle is in the approach zone
-                # self.reservation = None  # Clear any existing reservations
+                self.reservation = None  # Clear any existing reservations
                 # Set acceleration to max deceleration rate to stop at the stop line
                 # self.inst_a = -self.max_dec
                 logging.info(f"Vehicle {self._id} in approach zone rejecting reservations and stopping due to allStop broadcast.")
