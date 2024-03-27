@@ -9,6 +9,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from rl_agent import VehicleInterface
 
+
 class BaseInterManager:
     def __init__(self):
         self.timestep = 0
@@ -66,8 +67,8 @@ class TrafficLightManager(BaseInterManager):
 class DresnerManager(BaseInterManager):
     def __init__(self):
         super().__init__()
-        self.res_grid = DresnerResGrid(0.5) # Write to settings?
-        self.running_grid = DresnerResGrid(0.1)
+        self.res_grid = DresnerResGrid(0.1) # Write to settings?
+        self.running_grid = DresnerResGrid(0.01)
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
@@ -76,6 +77,7 @@ class DresnerManager(BaseInterManager):
         self.evasion_plan_grid_db = {}
         self.rl_vehicle=None
         self.set_up_rlVehicle()
+        self.evasion_swap=False
 
     def set_up_rlVehicle(self):
         temp = np.array([0,0])
@@ -84,6 +86,7 @@ class DresnerManager(BaseInterManager):
 
     def update(self):
         super().update()
+
         self.res_grid.dispose_passed_time(self.timestep)
 
     def get_grid_cells(self):
@@ -186,9 +189,10 @@ class DresnerManager(BaseInterManager):
         logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
         return crashed_Vehicle_ID
     
-    def rl_check_for_collision(self,all_vehicles):
+    def rl_check_for_collision(self,all_vehicles,rl=False):
         crashed_Vehicle_ID=[]
-        self.crash_happened = True # TODO CHange this
+        
+        #self.crash_happened = True # TODO CHange this
         if self.crash_happened:
             for veh in all_vehicles:
                 i,j = self.rl_get_grid_location(veh)
@@ -202,6 +206,9 @@ class DresnerManager(BaseInterManager):
 
                         if veh._id not in crashed_Vehicle_ID:  # If the current vehicle is not already in the list
                             crashed_Vehicle_ID.append(veh._id)  # Add the current vehicle ID to the list
+
+                        print("Vehice ID",veh._id, "collided with vehicle ID",current_cell,"at time",self.timestep)
+
 
                         reply_message = {'type': 'collision'}
                         ComSystem.I2V(veh, reply_message)  # Send a collision message to the current vehicle
@@ -268,16 +275,19 @@ class DresnerManager(BaseInterManager):
             self.crash_occured(message["veh_id"])
 
     def crash_occured(self,veh_id):
+        self.evasion_swap=True
         self.crash_happened=True
         crashValues['crashOccured']=True
-        print("Crash occured")
+        print("INTER_MANAGER:Crash occured")
         temp = None
+        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+        print("INTER_MANAGER:veh_id",veh_id)
+        print("INTER_MANAGER:self.timestep",self.timestep)
         if (veh_id,self.timestep) in self.evasion_plan_DB:
-            print("self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep)])
+            print("INTER_MANAGER:self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep)])
             temp = self.evasion_plan_DB[(veh_id,self.timestep)]
         else:
-
-            print("self.evasion_plan_DB",self.evasion_plan_DB[(veh_id,self.timestep+1)])
+            print("INTER_MANAGER:self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
             temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
         ComSystem.I_broadcast({'type': 'crash'},temp)
 
@@ -418,7 +428,7 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_acc  # Include the calculated exit time
                     }
                 else:
-                    print("-------------------------------------Rejected due to failed evasion")
+                    print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion")
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
                     return {
@@ -430,7 +440,7 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_const_v   # Include the calculated exit time
                     }
                 else:
-                    print("----------------------------------------Rejected due to failed evasion")
+                    print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion")
         return None
     
     def check_evasion(self, t_start, t_end):
@@ -442,7 +452,7 @@ class DresnerManager(BaseInterManager):
 
                 self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1)
                 self.evasion_plan_DB[(veh,t)]={}
-                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
+                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -5, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
                 temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
                 if self.dfs_evasion(veh,t,temp):
                     pass
@@ -458,9 +468,8 @@ class DresnerManager(BaseInterManager):
 
         veh = vehs[temp]
         temps= {k: v for k, v in vehs.items() if k != temp}
-        grid= self.evasion_plan_grid_db[(sigma,time)]
-        for steer in [math.pi/4,0,-math.pi/4]:
-            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': 0, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
+        for steer in [0,math.pi/4,-math.pi/4]:
+            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': -5, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
                 if self.dfs_evasion(sigma,time,temps):
                     self.evasion_plan_DB[(sigma,time)][veh["id"]]=steer
                     return True
@@ -500,6 +509,7 @@ class DresnerManager(BaseInterManager):
 
             angle= state["heading"]
             x,y = state["x"],state["y"]
+            speed = state["speed"]
             veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
             veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
             veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)

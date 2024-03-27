@@ -30,7 +30,7 @@ class Simulator:
             Simulator._instance = self
 
         self.timestep = 0
-        self.random_count = random.randint(25, 35)
+        self.random_count = 13#random.randint(25, 35)
         self.crash_count=0
         self.crash_time=2000
         self.sim_over=False
@@ -43,6 +43,7 @@ class Simulator:
         self.rl_agent = rl_agent_export
         self.rl_vehicle = None 
         self.set_up_rlVehicle()
+        self.evasion_swap=False
 
 
         # Generate vehicle counts for vehicle ID assignment
@@ -81,16 +82,46 @@ class Simulator:
         # print(self.timestep)
         # print("-------------------")
         for veh in self.all_veh["ju"]:
-            if veh._id not in self.veh_rl_values and not veh.collidedCar:
+            if not veh.collidedCar and not veh.controlled:
                 self.veh_rl_values[veh._id] = veh.get_veh_rl_values()
         # print("Rl_values: ", self.veh_rl_values)
         if self.rl_swap:
+            for veh in self.all_veh["ju"]:
+                veh.controlled = True
+                if veh.collidedCar:
+                    continue
+                
             self.rl_get_obs()
             # print("Obs: ",self.veh_rl_obs)
             self.rl_get_action()
             # print("Actions: ",self.veh_rl_actions)
             self.rl_update_pos_after_action()
             # print("Updated Values: ",self.veh_rl_updated_values)
+
+    def evasion_update(self):
+        if self.evasion_swap:
+            for veh in self.all_veh["ju"]:
+                veh.controlled = True
+                if veh.collidedCar or veh.faultyCar:
+                    continue
+                print("SIMULATOR:Vehicle ID: ", veh._id)
+                print("SIMULATOR:Evasion Direction: ", veh.evadeDirection)
+                print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
+                temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
+                self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
+                self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state([{"steering": veh.evadeDirection, "acceleration": -5}])
+                self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
+                veh.update_vehicle_values(
+                    self.veh_rl_updated_values[veh._id]["x"], 
+                    self.veh_rl_updated_values[veh._id]["y"], 
+                    self.veh_rl_updated_values[veh._id]["vx"],
+                    self.veh_rl_updated_values[veh._id]["vy"],
+                    self.veh_rl_updated_values[veh._id]["cosh"],
+                    self.veh_rl_updated_values[veh._id]["sinh"],
+                    self.veh_rl_updated_values[veh._id]["heading"] % (2 * math.pi),
+                    self.veh_rl_updated_values[veh._id]["speed"]
+                )
+                self.veh_rl_values[veh._id] = self.veh_rl_updated_values[veh._id]
 
     def rl_check_road_violation(self):
         x_limit = 3* lane_width + turn_radius
@@ -100,6 +131,9 @@ class Simulator:
 
                 reply_message = {'type': 'collision'}
                 ComSystem.I2V(veh, reply_message)  
+
+    def check_for_evasion_swap(self):
+        self.evasion_swap=inter_manager.evasion_swap
 
 
             
@@ -120,6 +154,7 @@ class Simulator:
                 self.veh_rl_updated_values[veh._id]["cosh"],
                 self.veh_rl_updated_values[veh._id]["sinh"],
                 self.veh_rl_updated_values[veh._id]["heading"] % (2 * math.pi),
+                self.veh_rl_updated_values[veh._id]["speed"]
             )
             self.veh_rl_values[veh._id] = self.veh_rl_updated_values[veh._id]
 
@@ -162,7 +197,10 @@ class Simulator:
 
 
     def update(self):
+        
         self.rl_update()
+        self.check_for_evasion_swap()
+        self.evasion_update()
         self.check_for_collisions()
         self.rl_check_road_violation()
 
@@ -199,13 +237,13 @@ class Simulator:
 
 
     def check_for_collisions(self):
-        if self.rl_swap:
+        if self.rl_swap or self.evasion_swap:
             crashed_vehicles= inter_manager.rl_check_for_collision(self.all_veh["ju"])
         else:
             crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         self.crash_count= len(crashed_vehicles)
         if inter_manager.check_for_collision_noCars() and self.crash_time==2000:
-            self.crash_time=self.timestep+200
+            self.crash_time=self.timestep+2000
 
 
         if self.crash_count>0:
@@ -221,7 +259,7 @@ class Simulator:
         '''For the vehicles in all_veh, update the location and record the vehicles whose grouping has changed'''
         to_switch_group = []
         for group, vehs in self.all_veh.items():
-            if group == 'ju' and self.rl_swap:
+            if group == 'ju' and (self.rl_swap or self.evasion_swap):
                 pass
             else:
                 for veh in vehs:
