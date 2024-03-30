@@ -182,8 +182,7 @@ class IDMVehicle(ControlledVehicle):
                 self.DELTA,
             )
         )
-        if front_vehicle and front_vehicle.controlled:
-            print("front_vehicle.controlled")
+
         if front_vehicle and not front_vehicle.controlled :
             d = ego_vehicle.lane_distance_to(front_vehicle)
             acceleration -= self.COMFORT_ACC_MAX * np.power(
