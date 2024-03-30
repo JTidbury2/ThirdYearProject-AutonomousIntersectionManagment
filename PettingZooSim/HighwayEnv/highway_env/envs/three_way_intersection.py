@@ -168,8 +168,8 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
         :return: the intersection road
         """
-        lane_width = 3.5
-        right_turn_radius = lane_width + 6  # [m}
+        lane_width = AbstractLane.DEFAULT_WIDTH
+        right_turn_radius = lane_width + 5  # [m}
         left_turn_radius = right_turn_radius + 3*lane_width  # [m}
         outer_distance = right_turn_radius + lane_width / 2
         access_length = 50 + 50  # [m]
