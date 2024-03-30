@@ -394,7 +394,10 @@ class DresnerVehicle(BaseVehicle):
         elif message['type'] == 'confirm':
             self.reservation = message['reservation']
             self.track.confirm_ex_lane(self.reservation['ex_lane'])
-            self.faultTime = random.uniform(float(self.reservation["arr_t"]), float(self.reservation["exit_time"]))
+            print("Arr_t",self.reservation["arr_t"])
+            print("Exit_time",self.reservation["exit_time"])
+            print("Reservation",self.reservation)
+            self.faultTime = random.uniform(float(self.reservation["arr_t"]), (float(self.reservation["exit_time"])*10)+float(self.reservation["arr_t"]))
             if self.faultyCar:
                 print("Start time is arr_t: ",self.reservation["arr_t"],"End time is exit_time: ",self.reservation["exit_time"])
                 print(f"Faulty vehicle {self._id} will crash at time {self.faultTime}")

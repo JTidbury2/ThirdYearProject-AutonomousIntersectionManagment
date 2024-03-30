@@ -283,11 +283,12 @@ class DresnerManager(BaseInterManager):
         # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
         print("INTER_MANAGER:veh_id",veh_id)
         print("INTER_MANAGER:self.timestep",self.timestep)
+        print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
         if (veh_id,self.timestep) in self.evasion_plan_DB:
-            print("INTER_MANAGER:self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep)])
+            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep)])
             temp = self.evasion_plan_DB[(veh_id,self.timestep)]
         else:
-            print("INTER_MANAGER:self.evasion_plan_DB[(veh_id,self.timestep)]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
+            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
             temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
         ComSystem.I_broadcast({'type': 'crash'},temp)
 
@@ -444,10 +445,11 @@ class DresnerManager(BaseInterManager):
         return None
     
     def check_evasion(self, t_start, t_end):
-        # print("t_start",t_start)
-        # print("t_end",t_end)
-        # print("Self.grid_veh_vlaues",self.grid_veh_values)
-        for t in range(round(t_start), round(t_end)):
+        print("t_start",t_start)
+        print("t_end",t_end)
+        print("Self.grid_veh_vlaues",self.grid_veh_values)
+        for t in range(round(t_start), round(t_end*10)):
+            print("t",t)    
             for veh , value in self.grid_veh_values[t].items():
 
                 self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1)

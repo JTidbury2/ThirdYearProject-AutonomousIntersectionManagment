@@ -389,5 +389,6 @@ class Evaluation(object):
         self.writer.close()
         if self.close_env:
             self.env.close()
-        return saved_dir
+        if self.training:
+            return saved_dir
         

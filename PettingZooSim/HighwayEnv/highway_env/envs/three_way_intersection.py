@@ -58,7 +58,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "collision_reward": -10,
                 "high_speed_reward": 0.5,
                 "arrived_reward": 0,
-                "reward_speed_range": [-1, 1],
+                "reward_speed_range": [-2, 2],
                 "normalize_reward": True,
                 "offroad_terminal": True,
                 "alive_reward":1
@@ -168,8 +168,8 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
         :return: the intersection road
         """
-        lane_width = AbstractLane.DEFAULT_WIDTH
-        right_turn_radius = lane_width + 5  # [m}
+        lane_width = 3.5
+        right_turn_radius = lane_width + 6  # [m}
         left_turn_radius = right_turn_radius + 3*lane_width  # [m}
         outer_distance = right_turn_radius + lane_width / 2
         access_length = 50 + 50  # [m]
@@ -359,6 +359,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 [0,0],
                 speed=random_speed,
                 heading=random_heading,
+                controlled=True
             )
             try:
                 ego_vehicle.plan_route_to(destination)

@@ -80,12 +80,13 @@ class MyPaintCanvas(QWidget):
         '''
         In a logical coordinate system, calculate the shape required for intersection drawing
         '''
-        x1 = self.lw * self.NSl
-        x2 = x1 + self.tr 
-        x3 = x2 + self.al
-        y1 = self.lw * self.EWl
-        y2 = y1 + self.tr
-        y3 = y2 + self.al
+        #lw = lane width tr = turn radius al = arm length
+        x1 = self.lw * self.NSl  # x1 = 3 * lane_width
+        x2 = x1 + self.tr # x2 = x1 + turn_radius
+        x3 = x2 + self.al # x3 = x2 + arm_length
+        y1 = self.lw * self.EWl # y1 = 3 * lane_width
+        y2 = y1 + self.tr # y2 = y1 + turn_radius
+        y3 = y2 + self.al 
         edge_Qlines = [
             QLineF(-x3, -y1, -x2, -y1), # 西上
             QLineF(-x3, y1, -x2, y1), # 西下

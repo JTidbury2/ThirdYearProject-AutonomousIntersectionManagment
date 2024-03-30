@@ -18,13 +18,13 @@ class Vehicle(RoadObject):
     It's state is propagated depending on its steering and acceleration actions.
     """
 
-    LENGTH = 5.0
+    LENGTH = 4.8
     """ Vehicle length [m] """
     WIDTH = 2.0
     """ Vehicle width [m] """
     DEFAULT_INITIAL_SPEEDS = [23, 25]
     """ Range for random initial speeds [m/s] """
-    MAX_SPEED = 40.0
+    MAX_SPEED = 33.0
     """ Maximum reachable speed [m/s] """
     MIN_SPEED = -40.0
     """ Minimum reachable speed [m/s] """
@@ -38,6 +38,7 @@ class Vehicle(RoadObject):
         heading: float = 0,
         speed: float = 0,
         predition_type: str = "constant_steering",
+        controlled: bool = False,
     ):
         super().__init__(road, position, heading, speed)
         self.prediction_type = predition_type
@@ -45,6 +46,7 @@ class Vehicle(RoadObject):
         self.crashed = False
         self.impact = None
         self.log = []
+        self.controlled = controlled
         self.history = deque(maxlen=self.HISTORY_SIZE)
 
     @classmethod
