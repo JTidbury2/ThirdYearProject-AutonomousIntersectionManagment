@@ -419,6 +419,7 @@ class DresnerManager(BaseInterManager):
                 exit_velocity_const_v = message['arr_v']
 
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
+                print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -431,6 +432,7 @@ class DresnerManager(BaseInterManager):
                 else:
                     print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion")
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
+                print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -445,10 +447,10 @@ class DresnerManager(BaseInterManager):
         return None
     
     def check_evasion(self, t_start, t_end):
-        print("t_start",t_start)
-        print("t_end",t_end)
-        print("Self.grid_veh_vlaues",self.grid_veh_values)
-        for t in range(round(t_start), round(t_end*10)):
+        print("INTER_MANAGER: t_start",t_start)
+        print("INTER_MANAGER: t_end",t_end)
+        print("INTER_MANAGER: Self.grid_veh_vlaues",self.grid_veh_values)
+        for t in range(round(t_start), round(t_end)):
             print("t",t)    
             for veh , value in self.grid_veh_values[t].items():
 

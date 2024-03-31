@@ -26,6 +26,8 @@ agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego
 
 env = load_environment(env_config)
 agent = load_agent(agent_config, env)
+agent.load("iridisResult/run_20240331-000554_133973/run_20240331-000554_133973")
+
 
 evaluation = Evaluation(env, agent, num_episodes=NUM_EPISODES, display_env=False, display_agent=False)
 saved_dir=evaluation.train()

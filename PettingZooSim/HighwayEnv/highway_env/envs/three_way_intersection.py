@@ -49,19 +49,19 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "actions_per_axis": 10,
                 "duration": 13,  # [s]
                 "controlled_vehicles": 1,
-                "initial_vehicle_count": 30,
+                "initial_vehicle_count":45,
                 "spawn_probability": 1,
                 "screen_width": 1200,
                 "screen_height": 1200,
                 "centering_position": [0.5, 0.6],
                 "scaling": 5.5 * 1.3,
-                "collision_reward": -10,
+                "collision_reward": -15,
                 "high_speed_reward": 0.5,
                 "arrived_reward": 0,
                 "reward_speed_range": [-2, 2],
                 "normalize_reward": True,
                 "offroad_terminal": True,
-                "alive_reward":1
+                "alive_reward":2
             }
         )
         return config
