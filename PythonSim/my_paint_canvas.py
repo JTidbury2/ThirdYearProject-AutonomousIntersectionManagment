@@ -207,7 +207,7 @@ class MyPaintCanvas(QWidget):
             y = - (y2 + (-veh.inst_x))
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Nex']: 
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -217,7 +217,7 @@ class MyPaintCanvas(QWidget):
             y = - (y2 + (veh.inst_x))
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Sap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -227,7 +227,7 @@ class MyPaintCanvas(QWidget):
             y = y2 + (-veh.inst_x)
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Sex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -237,7 +237,7 @@ class MyPaintCanvas(QWidget):
             y = y2 + veh.inst_x
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Wap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -247,7 +247,7 @@ class MyPaintCanvas(QWidget):
             y = self.lw / 2 + self.lw * veh.inst_lane
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Wex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -257,7 +257,7 @@ class MyPaintCanvas(QWidget):
             y = - (self.lw / 2 + self.lw * veh.inst_lane)
             rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Eap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -267,7 +267,7 @@ class MyPaintCanvas(QWidget):
             y = - (self.lw / 2 + self.lw * veh.inst_lane)
             rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Eex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -277,7 +277,7 @@ class MyPaintCanvas(QWidget):
             y = self.lw / 2 + self.lw * veh.inst_lane
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         if Simulator.getInstance().rl_swap or Simulator.getInstance().evasion_swap:
             for veh in Simulator.getInstance().all_veh['ju']:
                 if veh.faultyCar and veh.collidedCar:

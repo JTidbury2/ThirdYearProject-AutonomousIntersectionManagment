@@ -397,7 +397,9 @@ class DresnerVehicle(BaseVehicle):
             # print("Arr_t",self.reservation["arr_t"])
             # print("Exit_time",self.reservation["exit_time"])
             # print("Reservation",self.reservation)
-            self.faultTime = random.uniform(float(self.reservation["arr_t"]), (float(self.reservation["exit_time"])*10)+float(self.reservation["arr_t"]))
+            print("Vehicle ",self._id," has received a reservation")
+            # print("Reservation is: ",self.reservation)
+            self.faultTime = random.uniform(float(self.reservation["arr_t"]), (float(self.reservation["exit_time"]))+float(self.reservation["arr_t"]))
             if self.faultyCar:
                 print("Start time is arr_t: ",self.reservation["arr_t"],"End time is exit_time: ",self.reservation["exit_time"])
                 print(f"Faulty vehicle {self._id} will crash at time {self.faultTime}")

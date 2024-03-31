@@ -93,11 +93,11 @@ class Vehicle(RoadObject):
             self.crashed = True
             self.impact = None
         self.heading += self.speed * np.sin(beta) / (self.LENGTH / 2) * dt
-        print("acceleration", self.action["acceleration"] * dt)
-        print("previous speed", self.speed)
+        # print("acceleration", self.action["acceleration"] * dt)
+        # print("previous speed", self.speed)
         self.speed += self.action["acceleration"] * dt
         self.speed = max(0, self.speed)
-        print("new speed", self.speed)
+        # print("new speed", self.speed)
 
     def clip_actions(self) -> None:
         #print("self.action", self.action)

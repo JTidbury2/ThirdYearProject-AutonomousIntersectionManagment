@@ -109,7 +109,7 @@ class Simulator:
                 print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
                 temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
                 self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
-                self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state([{"steering": veh.evadeDirection, "acceleration": -5}])
+                self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state([{"steering": veh.evadeDirection, "acceleration": -10}])
                 self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
                 veh.update_vehicle_values(
                     self.veh_rl_updated_values[veh._id]["x"], 

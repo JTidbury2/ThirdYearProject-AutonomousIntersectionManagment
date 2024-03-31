@@ -281,9 +281,9 @@ class DresnerManager(BaseInterManager):
         print("INTER_MANAGER:Crash occured")
         temp = None
         # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
-        print("INTER_MANAGER:veh_id",veh_id)
-        print("INTER_MANAGER:self.timestep",self.timestep)
-        print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+        # print("INTER_MANAGER:veh_id",veh_id)
+        # print("INTER_MANAGER:self.timestep",self.timestep)
+        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
         if (veh_id,self.timestep) in self.evasion_plan_DB:
             print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep)])
             temp = self.evasion_plan_DB[(veh_id,self.timestep)]
@@ -417,9 +417,12 @@ class DresnerManager(BaseInterManager):
                 constant_speed_time = constant_speed_distance / message['arr_v']
                 exit_time_const_v += constant_speed_time
                 exit_velocity_const_v = message['arr_v']
+            
+            exit_time_acc = exit_time_acc*10 
+            exit_time_const_v = exit_time_const_v*10
 
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
-                print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
+                # print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -430,9 +433,9 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_acc  # Include the calculated exit time
                     }
                 else:
-                    print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion")
+                    print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
-                print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
+                # print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -443,25 +446,28 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_const_v   # Include the calculated exit time
                     }
                 else:
-                    print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion")
+                    print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion: ", message['veh_id'])
         return None
     
     def check_evasion(self, t_start, t_end):
-        print("INTER_MANAGER: t_start",t_start)
-        print("INTER_MANAGER: t_end",t_end)
-        print("INTER_MANAGER: Self.grid_veh_vlaues",self.grid_veh_values)
+        # print("INTER_MANAGER: t_start",t_start)
+        # print("INTER_MANAGER: t_end",t_end)
+        # print("INTER_MANAGER: Self.grid_veh_vlaues",self.grid_veh_values)
         for t in range(round(t_start), round(t_end)):
-            print("t",t)    
+            # print("t",t)  
+            # print("grid_veh_values[t].items()",self.grid_veh_values[t].items())  
             for veh , value in self.grid_veh_values[t].items():
 
-                self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1)
+                self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1) #TODO change this to 0.1
                 self.evasion_plan_DB[(veh,t)]={}
-                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -5, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
+                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
                 temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
                 if self.dfs_evasion(veh,t,temp):
                     pass
                 else:
+
                     return False
+                del self.evasion_plan_grid_db[(veh,t)]
             
         return True
 
@@ -473,7 +479,7 @@ class DresnerManager(BaseInterManager):
         veh = vehs[temp]
         temps= {k: v for k, v in vehs.items() if k != temp}
         for steer in [0,math.pi/4,-math.pi/4]:
-            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': -5, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
+            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': -10, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
                 if self.dfs_evasion(sigma,time,temps):
                     self.evasion_plan_DB[(sigma,time)][veh["id"]]=steer
                     return True
@@ -507,12 +513,14 @@ class DresnerManager(BaseInterManager):
             return False
         temp = np.array([x,y])
         self.rl_vehicle.update_vehicle_values(temp,speed,heading)
-        while self.rl_vehicle.vehicle.speed > 0:
+        while speed > 0:
+            # print("Loop check")
             state = self.rl_vehicle.get_state([action])
             t=t+1
 
             angle= state["heading"]
             x,y = state["x"],state["y"]
+            # print("state['speed']",state["speed"])
             speed = state["speed"]
             veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
             veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
@@ -529,11 +537,13 @@ class DresnerManager(BaseInterManager):
             # Check whether all occupied grid points are empty
             if np.sum(grid.cells[i, j, t_slice] != -1) == 0:
                 grid.cells[i, j, t_slice] = vid
-                return True
+
 
             else:
                 grid.clear_veh_cell(vid)
                 return False
+            
+        return True
 
 
 
