@@ -412,6 +412,7 @@ class Road(object):
         self.objects = road_objects or []
         self.np_random = np_random if np_random else np.random.RandomState()
         self.record_history = record_history
+        self.vehicles_for_stoppage=[]
 
     def close_objects_to(
         self,
@@ -494,7 +495,7 @@ class Road(object):
         s = self.network.get_lane(lane_index).local_coordinates(vehicle.position)[0]
         s_front = s_rear = None
         v_front = v_rear = None
-        for v in self.vehicles + self.objects:
+        for v in self.vehicles_for_stoppage + self.objects:
             if v is not vehicle and not isinstance(
                 v, Landmark
             ):  # self.network.is_connected_road(v.lane_index,

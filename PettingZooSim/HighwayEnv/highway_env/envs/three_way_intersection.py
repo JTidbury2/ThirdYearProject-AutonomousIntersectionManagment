@@ -318,13 +318,13 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             ]
 
         # Challenger vehicle
-        self._spawn_vehicle(
-            60,
-            spawn_probability=1,
-            go_straight=True,
-            position_deviation=0.1,
-            speed_deviation=0,
-        )
+        # self._spawn_vehicle(
+        #     60,
+        #     spawn_probability=1,
+        #     go_straight=True,
+        #     position_deviation=0.1,
+        #     speed_deviation=0,
+        # )
 
         # Controlled vehicles
         self.controlled_vehicles = []
@@ -416,6 +416,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         vehicle.plan_route_to("o:{}:{}".format(right_middle_left, destination_direction))
         vehicle.randomize_behavior()
         self.road.vehicles.append(vehicle)
+        self.road.vehicles_for_stoppage.append(vehicle)
         return vehicle
 
     def _clear_vehicles(self) -> None:
