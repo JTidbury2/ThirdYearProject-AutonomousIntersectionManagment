@@ -3,7 +3,7 @@ import logging
 
 from vehicle import Vehicle
 from inter_manager import inter_manager, ComSystem
-from lib.settings import lane_width, turn_radius, arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
+from lib.settings import lane_width, turn_radius, arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues, liveValues, random_veh_param
 import random
 from main import rl_agent_export
 import numpy as np
@@ -327,6 +327,8 @@ class Simulator:
     def make_veh(self, ap_arm, ap_lane, turn_dir):
         '''Create a vehicle object and return'''
         self.vehicleCount+=1
+        if liveValues["random"]:
+            veh_param = random_veh_param[random.randint(0,3)]
         new_veh_param = copy.deepcopy(veh_param)
         new_veh_param['ap_arm'] = ap_arm
         new_veh_param['ap_lane'] = ap_lane

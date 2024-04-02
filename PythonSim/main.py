@@ -68,12 +68,23 @@ if __name__ == '__main__':
 
     #Adjust traffic
     total_flow = int(sys.argv[2])
+
+    random = True if sys.argv[3] == 1 else False
+    lib.settings.liveValues["random"]=random
+
+
     #    # One lane is straight only
     #t_flow = total_flow / 4
     # Balance
-    l_flow = total_flow / 16
-    t_flow = total_flow / 8
-    r_flow = total_flow / 16
+    if not random:
+        l_flow = total_flow / 16
+        t_flow = total_flow / 8
+        r_flow = total_flow / 16
+    else:
+        # Randomize traffic flow proportions
+        l_flow = total_flow * random.random() / 8
+        t_flow = total_flow * random.random() / 4
+        r_flow = total_flow * random.random() / 8
     # # unbalanced
     # N_flow = total_flow / 9
     # S_flow = total_flow / 9 * 2
