@@ -52,9 +52,9 @@ class AgentInference(object):
             model_path = Path(model_path)
         try:
             self.agent.load(filename=model_path)
-            logging.info(f"Loaded model from {model_path}")
+            print(f"Loaded model from {model_path}")
         except FileNotFoundError:
-            logging.warning("No pre-trained model found at the desired location.")
+            print("No pre-trained model found at the desired location.")
         except NotImplementedError:
             pass
 

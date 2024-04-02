@@ -20,14 +20,17 @@ def exec_simulation():
     from cal_delay import cal_metrics
 
     # Define the log directory and file name
+    print('Current working directory:')
+    print(os.getcwd())
     log_dir = 'log'
     log_fname = os.path.join(log_dir, 'log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S"))
+
 
     # Check if the log directory exists, and create it if it doesn't
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    log_fname = 'log/log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S")
+
     logging.basicConfig(filename=log_fname, format='%(message)s', level=logging.DEBUG)
     logging.debug('t, veh._id, zone, lane, x, v, a')
     print(log_fname)
@@ -41,6 +44,9 @@ def exec_simulation():
     app.exec_()
 
     # print('Simulation finished, banana')
+
+    print('Calculating metrics...')
+    print(os.path.exists(log_fname))
 
     metrics = cal_metrics(log_fname)
     for key, value in metrics.items():
