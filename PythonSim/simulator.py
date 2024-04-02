@@ -27,9 +27,9 @@ class Simulator:
             Simulator._instance = self
 
         self.timestep = 0
-        self.random_count = random.randint(25, 35)
+        self.random_count = random.randint(15, 45)
         self.crash_count=0
-        self.crash_time=2000
+        self.crash_time=3000
         self.sim_over=False
 
         # Generate vehicle counts for vehicle ID assignment
@@ -76,7 +76,7 @@ class Simulator:
         crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         
         self.crash_count= len(crashed_vehicles)
-        if inter_manager.check_for_collision_noCars() and self.crash_time==2000:
+        if inter_manager.check_for_collision_noCars() and self.crash_time==3000:
             self.crash_time=self.timestep+100
 
 

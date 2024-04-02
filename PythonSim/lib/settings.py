@@ -3,12 +3,13 @@ veh_dt = 0.1
 disp_dt = 0.04
 simu_t = 600 # simulation time = 10 min
 time_wrap = 4
+# disp_dt = veh_dt / time_wrap
 
 ########################## Simulation Crash Params##################### #####
 crashValues={"crashOccured": False}
 ########################## Scene parameter settings##################### #####
-lane_width = 3.5
-turn_radius = 6 # The American Urban Street Design Guidelines require that the corner radius of general urban road intersections should be 3~4.5m
+lane_width = 4
+turn_radius = 5 # The American Urban Street Design Guidelines require that the corner radius of general urban road intersections should be 3~4.5m
 arm_len = 100
 NS_lane_count = 3
 EW_lane_count = 3
@@ -17,7 +18,7 @@ inter_v_lim = 11.11 # Speed ​​limit in intersection area, Human/Dresner/Xu w
 ########################## Vehicle parameter settings##################### #####
 veh_param = {
     'veh_wid': 2,
-    'veh_len': 4.8,
+    'veh_len': 5,
     'veh_len_front': 1, # The distance from the front bumper to the front axle
     'max_v': 33,
     'max_acc': 3,

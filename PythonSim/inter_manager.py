@@ -63,8 +63,8 @@ class TrafficLightManager(BaseInterManager):
 class DresnerManager(BaseInterManager):
     def __init__(self):
         super().__init__()
-        self.res_grid = DresnerResGrid(0.5) # Write to settings?
-        self.running_grid = DresnerResGrid(0.1)
+        self.res_grid = DresnerResGrid(0.1) # Write to settings?
+        self.running_grid = DresnerResGrid(0.05)
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
