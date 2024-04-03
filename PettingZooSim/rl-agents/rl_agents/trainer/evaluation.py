@@ -166,6 +166,9 @@ class Evaluation(object):
         """
         # Query agent for actions sequence
         actions = self.agent.plan(self.observation)
+        # print("Actions:",actions)
+        # print("Actions,james",self.agent.env.action_type.getActionJames(actions[0]))
+        # print("Actions,james2",[self.agent.env.action_type.get_action(self.agent.env.action_type.getActionJames(a)) for a in actions])
         if not actions:
             raise Exception("The agent did not plan any action")
 
@@ -173,6 +176,7 @@ class Evaluation(object):
         try:
             self.env.unwrapped.viewer.set_agent_action_sequence(actions)
         except AttributeError:
+            print("The environment viewer doesn't support agent action rendering.")
             pass
 
         # Step the environment
@@ -385,5 +389,6 @@ class Evaluation(object):
         self.writer.close()
         if self.close_env:
             self.env.close()
-        return saved_dir
+        if self.training:
+            return saved_dir
         

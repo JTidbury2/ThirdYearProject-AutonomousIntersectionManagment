@@ -156,6 +156,121 @@ class DresnerVehicle(BaseVehicle):
         self.crashOccured=crashHappenOnInit
         self.faultTime=0
         self.collidedCar=False
+        self.rl_x = 0
+        self.rl_y = 0
+        self.rl_vx = 0
+        self.rl_vy = 0
+        self.rl_cosh = 0
+        self.rl_sinh = 0
+        self.heading = 0
+        self.speed = 0
+        self.flag=True
+        self.evasion=False
+        self.evadeDirection=None
+        self.controlled=False
+
+    def update_vehicle_values(self, x,y,vx,vy,cosh,sinh,heading,speed):
+        self.rl_x = x
+        self.rl_y = y
+        self.rl_vx = vx
+        self.rl_vy = vy
+        self.rl_cosh = cosh
+        self.rl_sinh = sinh
+        self.heading = heading
+        self.speed =speed
+
+
+    def get_veh_rl_values(self):
+        self.update_rl_values()
+        return {
+            "presence": 1,
+            "veh_id": self._id,
+            "x": self.rl_x,
+            "y": self.rl_y,
+            "vx": self.rl_vx,
+            "vy": self.rl_vy,
+            "cosh": self.rl_cosh,
+            "sinh": self.rl_sinh,
+            "heading": self.heading % (2 * math.pi),
+            "speed": self.inst_v,
+        }
+
+
+
+
+
+    def update_rl_values(self):
+        # Use the value of inst_x and the seg values to compute the rl values
+        seg_idx = 0
+        for (i, end_x) in enumerate(self.track.ju_shape_end_x):
+            if self.inst_x > end_x:
+                seg_idx = i + 1
+                break
+
+        seg = self.track.ju_track[seg_idx]
+
+        if seg_idx > 0:
+            seg_x = self.inst_x - self.track.ju_shape_end_x[seg_idx - 1]
+        else:
+            seg_x = self.inst_x
+        # print("seg is ",seg)
+        if seg[0] == 'line':
+            if abs(seg[1][0] - seg[2][0]) < 1e-5:  # vertical line
+                self.rl_x = seg[1][0]
+                if seg[1][1] < seg[2][1]:  # from top to bottom
+                    self.rl_y = seg[1][1] + seg_x
+                    self.rl_cosh = 0
+                    self.rl_sinh = -1
+                    self.heading= 1.5 * math.pi
+                else:  # from bottom to top
+                    self.rl_y = seg[1][1] - seg_x
+                    self.rl_cosh = 0
+                    self.rl_sinh = 1
+                    self.heading= 0.5 * math.pi
+            else:  # horizontal line
+                self.rl_y = seg[1][1]
+                if seg[1][0] < seg[2][0]:  # from left to right
+                    self.rl_x = seg[1][0] + seg_x
+                    self.rl_cosh = 1
+                    self.rl_sinh = 0
+                    self.heading= 0
+                else:  # from right to left
+                    self.rl_x = seg[1][0] - seg_x
+                    self.rl_cosh = -1
+                    self.rl_sinh = 0
+                    self.heading= math.pi
+        else:  # circular curve
+            if seg[5][0] < seg[5][1]:  # Trajectory counterclockwise
+                # print("top")
+                rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                self.rl_cosh = math.cos(-rotation / 180 * math.pi)
+                self.rl_sinh = math.sin(-rotation / 180 * math.pi)
+                self.rl_x = seg[3][0] + seg[4] * self.rl_cosh
+                self.rl_y = seg[3][1] + seg[4] * self.rl_sinh
+                temp = self.rl_cosh
+                self.rl_cosh = self.rl_sinh
+                self.rl_sinh = temp
+                self.heading = rotation / 180 * math.pi
+                self.heading = (self.heading + math.pi/2 + 2*math.pi)% (2 * math.pi)
+            else:
+                # print("bottom")
+                rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                self.rl_cosh = math.cos(-rotation / 180 * math.pi)
+                self.rl_sinh = math.sin(-rotation / 180 * math.pi)
+                self.rl_x = seg[3][0] + seg[4] * self.rl_cosh
+                self.rl_y = seg[3][1] + seg[4] * self.rl_sinh
+                temp = self.rl_cosh
+                self.rl_cosh = -self.rl_sinh
+                self.rl_sinh = -temp
+                self.heading = rotation / 180 * math.pi
+                self.heading = (self.heading - math.pi/2 + 2*math.pi) % (2 * math.pi)
+
+        self.rl_y = -self.rl_y
+
+
+        self.rl_vx = self.inst_v * self.rl_cosh
+        self.rl_vy = self.inst_v * self.rl_sinh
+
 
     def plan_arr(self):
         '''According to the maximum arr_v, the earliest planned arrival time and speed of arr_t. Because only the leading car in a lane can plan this, so as long as the reservation is obtained, the plan can definitely be executed'''
@@ -216,7 +331,9 @@ class DresnerVehicle(BaseVehicle):
                     'max_acc': self.max_acc,
                     'max_dec': self.max_dec
                 })
+
             if self.reservation and not self.crashOccured :
+
                 # If the reservation is successful, the acceleration will be executed according to the previously calculated plan.
                 for t, a in self.ap_acc_profile:
                     if self.timestep >= t:
@@ -226,12 +343,26 @@ class DresnerVehicle(BaseVehicle):
                 # Unsuccessful，prepare to stop at stop bar & follow leading vehicle
                 self.inst_a = min(self.acc_with_lead_veh(lead_veh), self.cf_model.acc_from_model(self.inst_v, - self.inst_x - self.veh_len_front, 0))
         elif self.zone == 'ju':
+            # check rl values 
+
+            if self._id == 0:
+                # print("Timstep is: ",self.timestep)
+                # print("rl_x is: ",self.rl_x)
+                # print("rl_y is: ",self.rl_y)
+                # print("rl_vx is: ",self.rl_vx)
+                # print("rl_vy is: ",self.rl_vy)
+                # print("rl_cosh is: ",self.rl_cosh)
+                # print("rl_sinh is: ",self.rl_sinh)
+                # print("heading is: ",self.heading)
+                pass
+
             # Check if the vehicle is marked as faulty
-            if self.faultyCar and self.timestep >= self.faultTime:
+            if self.faultyCar and self.timestep >= self.faultTime and self.flag:
                 ComSystem.V2I(self, {
                     'type': 'fault',
                     'veh_id': self._id
                 })
+                self.flag=False
                 # If the vehicle is faulty, initiate an immediate stop by applying maximum safe deceleration
                 self.inst_a = -50
                 # Optionally, log this event or take additional actions as necessary
@@ -266,7 +397,12 @@ class DresnerVehicle(BaseVehicle):
         elif message['type'] == 'confirm':
             self.reservation = message['reservation']
             self.track.confirm_ex_lane(self.reservation['ex_lane'])
-            self.faultTime = random.uniform(float(self.reservation["arr_t"]), float(self.reservation["exit_time"]))
+            # print("Arr_t",self.reservation["arr_t"])
+            # print("Exit_time",self.reservation["exit_time"])
+            # print("Reservation",self.reservation)
+            print("Vehicle ",self._id," has received a reservation")
+            # print("Reservation is: ",self.reservation)
+            self.faultTime = random.uniform(float(self.reservation["arr_t"]), (float(self.reservation["exit_time"]))+float(self.reservation["arr_t"]))
             if self.faultyCar:
                 print("Start time is arr_t: ",self.reservation["arr_t"],"End time is exit_time: ",self.reservation["exit_time"])
                 print(f"Faulty vehicle {self._id} will crash at time {self.faultTime}")
@@ -277,6 +413,9 @@ class DresnerVehicle(BaseVehicle):
             self.collidedCar=True
             self.inst_a=0
             self.inst_v=0
+            self.rl_vx=0
+            self.rl_vy=0
+            self.speed=0
 
     def receive_broadcast(self, message):
         if message["type"] =="crash":
@@ -284,10 +423,13 @@ class DresnerVehicle(BaseVehicle):
             if self.zone == 'ju':  # Check if the vehicle is in the junction zone
                 # Set the vehicle's acceleration to the maximum safe deceleration rate
                 self.inst_a = -self.max_dec
+                if "evade" in message.keys():
+                    self.evasion=True
+                    self.evadeDirection=message["evade"]
                 # Optionally, log this event or take additional actions as necessary
                 logging.info(f"Vehicle {self._id} stopping at max deceleration rate due to allStop broadcast.")
             elif self.zone == 'ap':  # Vehicle is in the approach zone
-                # self.reservation = None  # Clear any existing reservations
+                self.reservation = None  # Clear any existing reservations
                 # Set acceleration to max deceleration rate to stop at the stop line
                 # self.inst_a = -self.max_dec
                 logging.info(f"Vehicle {self._id} in approach zone rejecting reservations and stopping due to allStop broadcast.")

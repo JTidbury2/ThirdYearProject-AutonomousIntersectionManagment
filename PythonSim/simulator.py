@@ -2,11 +2,16 @@ import copy
 import logging
 
 from vehicle import Vehicle
-from inter_manager import inter_manager
+
+from inter_manager import inter_manager, ComSystem
+
 from lib.settings import lane_width, turn_radius, arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues, liveValues, random_veh_param
 import random
-
+from main import rl_agent_export
 import numpy as np
+import math
+from rl_agent import AgentInference, VehicleInterface
+
 
 class Simulator:
     _instance = None
@@ -32,6 +37,17 @@ class Simulator:
         self.crash_time=4000
         self.random_count = random.randint(250, 1000)
         self.sim_over=False
+        self.rl_swap = False
+        self.rl_OBS_COUNT = 15
+        self.veh_rl_values = {}
+        self.veh_rl_obs = {}
+        self.veh_rl_actions = {}
+        self.veh_rl_updated_values = {}
+        self.rl_agent = rl_agent_export
+        self.rl_vehicle = None 
+        self.set_up_rlVehicle()
+        self.evasion_swap=False
+
 
         # Generate vehicle counts for vehicle ID assignment
         self.gen_veh_count = 0  
@@ -51,10 +67,149 @@ class Simulator:
         }
         self.vehicleCount=0
 
+        
+
+    def set_up_rlAgent(self):
+        env_config = '../rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
+        agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
+        model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
+        self.rl_agent= AgentInference(env_config, agent_config, model_path)
+
+    def set_up_rlVehicle(self):
+        temp = np.array([0,0])
+        self.rl_vehicle = VehicleInterface(temp,0,0)
+
+
+    def rl_update(self):
+        # print("-------------------")
+        # print(self.timestep)
+        # print("-------------------")
+        for veh in self.all_veh["ju"]:
+            if not veh.collidedCar and not veh.controlled:
+                self.veh_rl_values[veh._id] = veh.get_veh_rl_values()
+        # print("Rl_values: ", self.veh_rl_values)
+        if self.rl_swap:
+            for veh in self.all_veh["ju"]:
+                veh.controlled = True
+                if veh.collidedCar:
+                    continue
+                
+            self.rl_get_obs()
+            # print("Obs: ",self.veh_rl_obs)
+            self.rl_get_action()
+            # print("Actions: ",self.veh_rl_actions)
+            self.rl_update_pos_after_action()
+            # print("Updated Values: ",self.veh_rl_updated_values)
+
+    def evasion_update(self):
+        if self.evasion_swap:
+            for veh in self.all_veh["ju"]:
+                veh.controlled = True
+                if veh.collidedCar or veh.faultyCar:
+                    continue
+                print("SIMULATOR:Vehicle ID: ", veh._id)
+                print("SIMULATOR:Evasion Direction: ", veh.evadeDirection)
+                print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
+                temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
+                self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
+                self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state([{"steering": veh.evadeDirection, "acceleration": -10}])
+                self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
+                veh.update_vehicle_values(
+                    self.veh_rl_updated_values[veh._id]["x"], 
+                    self.veh_rl_updated_values[veh._id]["y"], 
+                    self.veh_rl_updated_values[veh._id]["vx"],
+                    self.veh_rl_updated_values[veh._id]["vy"],
+                    self.veh_rl_updated_values[veh._id]["cosh"],
+                    self.veh_rl_updated_values[veh._id]["sinh"],
+                    self.veh_rl_updated_values[veh._id]["heading"] % (2 * math.pi),
+                    self.veh_rl_updated_values[veh._id]["speed"]
+                )
+                self.veh_rl_values[veh._id] = self.veh_rl_updated_values[veh._id]
+
+    def rl_check_road_violation(self):
+        x_limit = 3* lane_width + turn_radius
+        y_limit = 3* lane_width + turn_radius
+        for veh in self.all_veh["ju"]:
+            if veh.rl_x < -x_limit or veh.rl_x > x_limit or veh.rl_y < -y_limit or veh.rl_y > y_limit:
+
+                reply_message = {'type': 'collision'}
+                ComSystem.I2V(veh, reply_message)  
+
+    def check_for_evasion_swap(self):
+        self.evasion_swap=inter_manager.evasion_swap
+
+
+            
+
+    def rl_update_pos_after_action(self):
+        for veh in self.all_veh["ju"]:
+            if veh.collidedCar:
+                continue
+            temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
+            self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
+            self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state(self.veh_rl_actions[veh._id])
+            self.veh_rl_updated_values[veh._id]["veh_id"] = veh._id
+            veh.update_vehicle_values(
+                self.veh_rl_updated_values[veh._id]["x"], 
+                self.veh_rl_updated_values[veh._id]["y"], 
+                self.veh_rl_updated_values[veh._id]["vx"],
+                self.veh_rl_updated_values[veh._id]["vy"],
+                self.veh_rl_updated_values[veh._id]["cosh"],
+                self.veh_rl_updated_values[veh._id]["sinh"],
+                self.veh_rl_updated_values[veh._id]["heading"] % (2 * math.pi),
+                self.veh_rl_updated_values[veh._id]["speed"]
+            )
+            self.veh_rl_values[veh._id] = self.veh_rl_updated_values[veh._id]
+
+
+
+
+    def rl_get_obs(self):
+        for ego_veh in self.all_veh["ju"]:
+            if ego_veh.collidedCar:
+                continue
+            obs = []
+            sorted_veh = sorted(self.all_veh["ju"], key=lambda veh: self.get_distance(veh.rl_x, veh.rl_y, ego_veh.rl_x, ego_veh.rl_y))
+            count=0
+            for veh in sorted_veh:
+                if count < self.rl_OBS_COUNT and not veh.collidedCar:
+                    veh_rl_values = self.veh_rl_values[veh._id]
+                    obs.append([veh_rl_values["presence"], veh_rl_values["x"], veh_rl_values["y"], veh_rl_values["vx"], veh_rl_values["vy"], veh_rl_values["cosh"], veh_rl_values["sinh"]])
+                    count+=1
+                else:
+                    break
+
+            while count < self.rl_OBS_COUNT:
+                obs.append([0] * len(obs[0]))
+                count+=1
+
+            self.veh_rl_obs[ego_veh._id] = obs
+
+
+
+    def get_distance(self, x1, y1, x2, y2):
+        return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    
+
+    def rl_get_action(self):
+        for veh in self.all_veh["ju"]:
+            if veh.collidedCar:
+                continue
+            actions= self.rl_agent.get_agent_action(self.veh_rl_obs[veh._id])
+            self.veh_rl_actions[veh._id] = actions
+
+
     def update(self):
+        
+        self.rl_update()
+        self.check_for_evasion_swap()
+        self.evasion_update()
         self.check_for_collisions()
+        self.rl_check_road_violation()
+
         self.timestep += 1
         # print('Timestep: %d' % self.timestep)
+
         to_switch_group = self.all_update_position()
         # print('all_update_position')
         self.update_group(to_switch_group)
@@ -73,16 +228,31 @@ class Simulator:
             #insert code here 
             self.sim_over=True
 
+
+
+    def switch_to_rl(self):
+        for group, vehs in self.all_veh.items():
+            if group == "ju":
+                for veh in vehs:
+                    veh.switch_to_rl()
+
+
+
+
     def check_for_collisions(self):
-        crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
-        
+        if self.rl_swap or self.evasion_swap:
+            crashed_vehicles= inter_manager.rl_check_for_collision(self.all_veh["ju"])
+        else:
+            crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         self.crash_count= len(crashed_vehicles)
+
         if inter_manager.check_for_collision_noCars() and self.crash_time==4000:
             self.crash_time=self.timestep+100
 
 
+
         if self.crash_count>0:
-            # print(crashed_vehicles)
+            print(crashed_vehicles)
             pass
 
     def check_for_finish(self):
@@ -94,10 +264,13 @@ class Simulator:
         '''For the vehicles in all_veh, update the location and record the vehicles whose grouping has changed'''
         to_switch_group = []
         for group, vehs in self.all_veh.items():
-            for veh in vehs:
-                switch_group = veh.update_position(veh_dt)
-                if switch_group:
-                    to_switch_group.append([veh, group])
+            if group == 'ju' and (self.rl_swap or self.evasion_swap):
+                pass
+            else:
+                for veh in vehs:
+                    switch_group = veh.update_position(veh_dt)
+                    if switch_group:
+                        to_switch_group.append([veh, group])
         return to_switch_group
     
     def update_group(self, to_switch_group):
@@ -160,10 +333,12 @@ class Simulator:
         '''Create a vehicle object and return'''
         self.vehicleCount+=1
         if liveValues["random"]:
+
             new_veh_param = copy.deepcopy(random_veh_param[random.randint(0,3)])
       
         else: 
             new_veh_param = copy.deepcopy(veh_param)
+
 
         new_veh_param['ap_arm'] = ap_arm
         new_veh_param['ap_lane'] = ap_lane
@@ -189,7 +364,7 @@ class Simulator:
                         if vehs[j].inst_lane == veh.inst_lane:
                             lead_veh = vehs[j]
                             break
-                else: # At the intersection, there is no concept of lanes here, but in order to prevent two cars with the same trajectory from colliding, they are still considered to be in the same lane.
+                elif not self.rl_swap : # At the intersection, there is no concept of lanes here, but in order to prevent two cars with the same trajectory from colliding, they are still considered to be in the same lane.
                     for j in range(i+1, len(vehs)):
                         if vehs[j].track.ap_arm == veh.track.ap_arm and vehs[j].track.ap_lane == veh.track.ap_lane \
                             and vehs[j].track.turn_dir == veh.track.turn_dir and vehs[j].track.ex_lane == veh.track.ex_lane:

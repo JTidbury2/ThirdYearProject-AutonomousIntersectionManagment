@@ -1,12 +1,14 @@
 import math
 import logging
 
-from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time,crashValues
+from lib.settings import inter_control_mode, lane_width, turn_radius, arm_len, NS_lane_count, EW_lane_count, veh_dt, inter_v_lim, inter_v_lim_min, min_gen_ht, conflict_movements, virtual_lead_v, desired_cf_distance, phase, yellow_time,crashValues, veh_param,arm_v_lim
 from map import Map, Track
 
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+from rl_agent import VehicleInterface
+
 
 class BaseInterManager:
     def __init__(self):
@@ -59,6 +61,8 @@ class TrafficLightManager(BaseInterManager):
         
     def receive_V2I(self, sender, message):
         return 
+    
+
 
 class DresnerManager(BaseInterManager):
     def __init__(self):
@@ -68,9 +72,21 @@ class DresnerManager(BaseInterManager):
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
+        self.evasion_plan_DB= {}
+        self.grid_veh_values = {}
+        self.evasion_plan_grid_db = {}
+        self.rl_vehicle=None
+        self.set_up_rlVehicle()
+        self.evasion_swap=False
+
+    def set_up_rlVehicle(self):
+        temp = np.array([0,0])
+        self.rl_vehicle = VehicleInterface(temp,0,0)
+
 
     def update(self):
         super().update()
+
         self.res_grid.dispose_passed_time(self.timestep)
 
     def get_grid_cells(self):
@@ -127,6 +143,23 @@ class DresnerManager(BaseInterManager):
 
         return i, j 
     
+    def rl_get_grid_location(self,veh):
+        x = veh.rl_x
+        y = veh.rl_y
+        cosh = veh.rl_cosh
+        sinh = veh.rl_sinh
+
+        # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
+        veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \
+            0.4, veh.speed * 0.1)
+        veh_dots_x_rt = veh_dots_x * cosh - veh_dots_y * sinh
+        veh_dots_y_rt = veh_dots_y * cosh + veh_dots_x * sinh
+        veh_dots_x_rt += x
+        veh_dots_y_rt += y
+        i, j = self.running_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+
+        return i, j 
+    
     def check_for_collision(self,all_vehicles):
         crashed_Vehicle_ID=[]
         if self.crash_happened:
@@ -142,6 +175,40 @@ class DresnerManager(BaseInterManager):
 
                         if veh._id not in crashed_Vehicle_ID:  # If the current vehicle is not already in the list
                             crashed_Vehicle_ID.append(veh._id)  # Add the current vehicle ID to the list
+
+                        reply_message = {'type': 'collision'}
+                        ComSystem.I2V(veh, reply_message)  # Send a collision message to the current vehicle
+
+                        # Assuming you have a way to send messages to other vehicles by ID
+                        ComSystem.I2V(self.get_vehicle_by_id(current_cell,all_vehicles), reply_message)  # Send a collision message to the occupying vehicle
+
+                    # Update the cell to indicate it's now occupied by the current vehicle
+                    self.get_grid_cells()[i[idx], j[idx], 0] = veh._id
+            self.running_grid.reset_grid()
+
+        logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
+        return crashed_Vehicle_ID
+    
+    def rl_check_for_collision(self,all_vehicles,rl=False):
+        crashed_Vehicle_ID=[]
+        
+        #self.crash_happened = True # TODO CHange this
+        if self.crash_happened:
+            for veh in all_vehicles:
+                i,j = self.rl_get_grid_location(veh)
+
+                for idx in range(len(i)):
+                    current_cell = self.get_grid_cells()[i[idx], j[idx], 0]  # Access the current cell
+                    
+                    if current_cell != -1 and current_cell != veh._id:  # If the cell is occupied by another vehicle
+                        if current_cell not in crashed_Vehicle_ID:  # If the occupying vehicle is not already in the list
+                            crashed_Vehicle_ID.append(current_cell)  # Add the occupying vehicle ID to the list
+
+                        if veh._id not in crashed_Vehicle_ID:  # If the current vehicle is not already in the list
+                            crashed_Vehicle_ID.append(veh._id)  # Add the current vehicle ID to the list
+
+                        print("Vehice ID",veh._id, "collided with vehicle ID",current_cell,"at time",self.timestep)
+
 
                         reply_message = {'type': 'collision'}
                         ComSystem.I2V(veh, reply_message)  # Send a collision message to the current vehicle
@@ -205,12 +272,25 @@ class DresnerManager(BaseInterManager):
                 'res_id': message['res_id']
             })
         elif message["type"]== "fault":
-            self.crash_occured()
+            self.crash_occured(message["veh_id"])
 
-    def crash_occured(self):
+    def crash_occured(self,veh_id):
+        self.evasion_swap=True
         self.crash_happened=True
         crashValues['crashOccured']=True
-        ComSystem.I_broadcast({'type': 'crash'})
+        print("INTER_MANAGER:Crash occured")
+        temp = None
+        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+        # print("INTER_MANAGER:veh_id",veh_id)
+        # print("INTER_MANAGER:self.timestep",self.timestep)
+        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+        if (veh_id,self.timestep) in self.evasion_plan_DB:
+            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep)])
+            temp = self.evasion_plan_DB[(veh_id,self.timestep)]
+        else:
+            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
+            temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
+        ComSystem.I_broadcast({'type': 'crash'},temp)
 
     
 
@@ -290,6 +370,517 @@ class DresnerManager(BaseInterManager):
             ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
             ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
             acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
+            exit_time_acc=0  # Initialize exit time with the arrival time
+            exit_time_const_v=0
+            exit_v_acc=0    
+            exit_v_const_v=0
+
+            if acc_distance >= ju_shape_end_x[-1]: 
+                # Accelerate the whole process
+                acc_acc = [[message['arr_t'], message['max_acc']]]
+                # Estimate exit time assuming constant acceleration over the distance
+                exit_time_acc  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                exit_velocity_acc = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+            else:
+                # Acceleration-constant speed
+                acc_time = (inter_v_lim - message['arr_v']) / message['max_acc']
+                constant_speed_distance = ju_shape_end_x[-1] - acc_distance
+                constant_speed_time = constant_speed_distance / inter_v_lim
+                exit_time_acc  += acc_time + constant_speed_time
+                exit_velocity_acc = inter_v_lim
+
+                acc_acc = [
+                    [message['arr_t'], message['max_acc']], 
+                    [message['arr_t'] + acc_time, 0]
+                ]
+
+            if message['arr_v'] < inter_v_lim_min:
+                acc_distance_c = (8**2 - message['arr_v']**2) / 2 / message['max_acc']
+                if acc_distance_c >= ju_shape_end_x[-1]: 
+                    acc_const_v = [[message['arr_t'], message['max_acc']]]
+                    exit_time_const_v  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                    exit_velocity_const_v = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+                else:
+                    acc_time_c = (8 - message['arr_v']) / message['max_acc']
+                    constant_speed_distance_c = ju_shape_end_x[-1] - acc_distance_c
+                    constant_speed_time_c = constant_speed_distance_c / 8
+                    exit_time_const_v  += acc_time_c + constant_speed_time_c
+                    exit_velocity_const_v = 8
+
+                    acc_const_v = [
+                        [message['arr_t'], message['max_acc']], 
+                        [message['arr_t'] + acc_time_c, 0]
+                    ]
+            else:
+                acc_const_v = [[message['arr_t'], 0]]
+                constant_speed_distance = ju_shape_end_x[-1]
+                constant_speed_time = constant_speed_distance / message['arr_v']
+                exit_time_const_v += constant_speed_time
+                exit_velocity_const_v = message['arr_v']
+            
+            exit_time_acc = exit_time_acc*10 
+            exit_time_const_v = exit_time_const_v*10
+
+            if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
+                # print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
+                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
+                    return {
+                        'res_id': 0,  # Todo: Generate a unique reservation ID
+                        'ex_lane': ex_lane,
+                        'arr_t': message['arr_t'],
+                        'arr_v': message['arr_v'],
+                        'acc': acc_acc,
+                        'exit_time': exit_time_acc  # Include the calculated exit time
+                    }
+                else:
+                    print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
+            elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
+                # print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
+                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
+                    return {
+                        'res_id': 0,  # Todo: Generate a unique reservation ID
+                        'ex_lane': ex_lane,
+                        'arr_t': message['arr_t'],
+                        'arr_v': message['arr_v'],
+                        'acc': acc_const_v,
+                        'exit_time': exit_time_const_v   # Include the calculated exit time
+                    }
+                else:
+                    print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion: ", message['veh_id'])
+        return None
+    
+    def check_evasion(self, t_start, t_end):
+        # print("INTER_MANAGER: t_start",t_start)
+        # print("INTER_MANAGER: t_end",t_end)
+        # print("INTER_MANAGER: Self.grid_veh_vlaues",self.grid_veh_values)
+        for t in range(round(t_start), round(t_end)):
+            # print("t",t)  
+            # print("grid_veh_values[t].items()",self.grid_veh_values[t].items())  
+            for veh , value in self.grid_veh_values[t].items():
+
+                self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1) #TODO change this to 0.1
+                self.evasion_plan_DB[(veh,t)]={}
+                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
+                temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
+                if self.dfs_evasion(veh,t,temp):
+                    pass
+                else:
+
+                    return False
+                del self.evasion_plan_grid_db[(veh,t)]
+            
+        return True
+
+    def dfs_evasion(self, sigma, time, vehs):
+        if not vehs:
+            return True
+        temp = list(vehs.keys())[0]
+
+        veh = vehs[temp]
+        temps= {k: v for k, v in vehs.items() if k != temp}
+        for steer in [0,math.pi/4,-math.pi/4]:
+            if self.check_cells_evasion(sigma,time,veh["position"][0],veh["position"][1],veh["speed"],veh["heading"],{'acceleration': -10, 'steering': steer},veh["veh_wid"],veh["veh_len"],veh["veh_len_front"],veh["id"]):
+                if self.dfs_evasion(sigma,time,temps):
+                    self.evasion_plan_DB[(sigma,time)][veh["id"]]=steer
+                    return True
+
+        return False
+    #heading in degrees
+    def check_cells_evasion(self,sigma,time, x,y,speed,heading,action, veh_wid, veh_len, veh_len_front,vid):
+        t=0
+        grid = self.evasion_plan_grid_db[(sigma,time)]
+        angle= heading
+        x,y = x,y
+        veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
+        veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+        veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+        veh_dots_x_rt += x
+        veh_dots_y_rt += y
+        
+        #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+        i, j = grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+        t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-grid.t_start))
+        while t_slice[0] >= grid.cells.shape[2]:
+            self.grid.add_time_dimension()
+        
+        # Check whether all occupied grid points are empty
+        if np.sum(grid.cells[i, j, t_slice] != -1) == 0:
+            grid.cells[i, j, t_slice] = vid
+
+        else:
+            # Planning failed, return False after clearing traces
+            grid.clear_veh_cell(vid)
+            return False
+        temp = np.array([x,y])
+        self.rl_vehicle.update_vehicle_values(temp,speed,heading)
+        while speed > 0:
+            # print("Loop check")
+            state = self.rl_vehicle.get_state([action])
+            t=t+1
+
+            angle= state["heading"]
+            x,y = state["x"],state["y"]
+            # print("state['speed']",state["speed"])
+            speed = state["speed"]
+            veh_dots_x, veh_dots_y = self.gen_veh_dots(veh_wid, veh_len, veh_len_front, 0.4, speed * 0.1)
+            veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+            veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+            veh_dots_x_rt += x
+            veh_dots_y_rt += y
+            
+            #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+            i, j = grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-grid.t_start))
+            while t_slice[0] >= grid.cells.shape[2]:
+                grid.add_time_dimension()
+            
+            # Check whether all occupied grid points are empty
+            if np.sum(grid.cells[i, j, t_slice] != -1) == 0:
+                grid.cells[i, j, t_slice] = vid
+
+
+            else:
+                grid.clear_veh_cell(vid)
+                return False
+            
+        return True
+
+
+
+        
+
+            
+    def check_cells_stepwise(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc):
+        t = message['arr_t'] #Currtent time
+        # print("t",t)
+        v = message['arr_v'] #Current speed
+        x_1d = 0 # One dimensional positon along junciton path
+        a_idx = 0 # Acceleration index
+        seg_idx = 0 # Segment index
+        veh_traverse_values = {}
+         
+        while x_1d <= ju_shape_end_x[-1]:
+            # Calculate the vehicle xy coordinates and direction
+            seg = ju_track[seg_idx]
+            if seg_idx > 0:
+                seg_x = x_1d - ju_shape_end_x[seg_idx - 1]  
+            else:
+                seg_x = x_1d
+            if seg[0] == 'line': # is a straight line
+                if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
+                    x = seg[1][0]
+                    if seg[1][1] < seg[2][1]: # from top to bottom
+                        y = seg[1][1] + seg_x
+                        angle = 180 # angle is the number of degrees of clockwise rotation compared to "head to north"
+                    else: # from bottom to top
+                        y = seg[1][1] - seg_x
+                        angle = 0
+                else: # Horizontal line
+                    y = seg[1][1]
+                    if seg[1][0] < seg[2][0]: # from left to right
+                        x = seg[1][0] + seg_x
+                        angle = 90 
+                    else: # from right to left
+                        x = seg[1][0] - seg_x
+                        angle = 270
+            else:  # circular curve
+                if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
+                    rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                    angle = 180 - rotation
+                    x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                    y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+                else:
+                    rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                    angle = - rotation
+                    x = seg[3][0] + seg[4] * math.cos(-rotation / 180 * math.pi)
+                    y = seg[3][1] + seg[4] * math.sin(-rotation / 180 * math.pi)
+            
+            # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
+            veh_dots_x, veh_dots_y = self.gen_veh_dots(message['veh_wid'], message['veh_len'], message['veh_len_front'], \
+                0.4, v * 0.1)
+            veh_dots_x_rt = veh_dots_x * math.cos(angle*math.pi/180) - veh_dots_y * math.sin(angle*math.pi/180)
+            veh_dots_y_rt = veh_dots_y * math.cos(angle*math.pi/180) + veh_dots_x * math.sin(angle*math.pi/180)
+            veh_dots_x_rt += x
+            veh_dots_y_rt += y
+            veh_traverse_values[round(t)]={"position":(x,y),"speed":v,"heading":angle,"veh_wid":message['veh_wid'],"veh_len":message['veh_len'],"veh_len_front":message['veh_len_front'],"id":message['veh_id']}
+            
+            #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
+            i, j = self.res_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.res_grid.t_start))
+            while t_slice[0] >= self.res_grid.cells.shape[2]:
+                self.res_grid.add_time_dimension()
+            
+            # Check whether all occupied grid points are empty
+            if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
+                self.res_grid.cells[i, j, t_slice] = message['veh_id']
+
+                # if message['veh_id']==1:
+                #     print('i:',i)
+                #     print('j:',j)
+                #     print('t_slice:',t_slice)
+            else:
+                # Planning failed, return False after clearing traces
+                self.res_grid.clear_veh_cell(message['veh_id'])
+                return False
+
+            # Update position, velocity, acceleration, and shape
+            x_1d += v * veh_dt + acc[a_idx][1] / 2 * veh_dt ** 2
+            v += acc[a_idx][1] * veh_dt
+            t += 1
+            if a_idx+1 < len(acc) and t >= acc[a_idx+1][0]:
+                a_idx += 1
+            if x_1d > ju_shape_end_x[seg_idx]:
+                seg_idx += 1 # If it is the last shape, it will exit the loop, it’s okay
+
+        occ_dura = max((v-inter_v_lim_min)/message['max_dec'] + message['veh_len']/v, min_gen_ht)
+        occ_start = math.floor(t - (occ_dura / veh_dt))
+        occ_end = math.ceil(t)
+        for record in self.res_grid.ex_lane_record[ex_arm + str(ex_lane)]:
+            if not (record[1] > occ_end or record[2] < occ_start):
+                self.res_grid.clear_veh_cell(message['veh_id'])
+                return False
+
+        self.res_grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
+        for key, value in veh_traverse_values.items():
+            if key not in self.grid_veh_values:
+                self.grid_veh_values[key]={}
+            self.grid_veh_values[key][message["veh_id"]]=value
+        return True
+    
+class GeneticReordering():
+    def __init__(self, default_processing_interval_arg=2.0):
+        # The time period between the processing times.
+        self.default_processing_interval = 2.0
+        # The amount of lookahead (the period of time between the end time of the
+        # last processed batch and the target batch).
+        self.lookahead_time=3.0
+
+        self.batch_interval=self.default_processing_interval
+        self.next_processing_time=0.0
+        self.next_proposal_deadline=0.0
+        self.processing_interval=default_processing_interval_arg
+
+        def setInitialTime(self, initTime):
+            self.next_processing_time=initTime+self.processing_interval
+            self.next_proposal_deadline=self.next_processing_time
+        
+        def get_batch(current_time, queue):
+            # Assuming selectProposals and reorderProposals are defined elsewhere and work similarly to the Java version
+            proposals1 = self.select_proposals(current_time, queue)
+            proposals2 = self.reorder_proposals(proposals1)
+
+            global next_processing_time, next_proposal_deadline
+            self.next_processing_time = current_time + self.processing_interval
+            self.next_proposal_deadline = next_processing_time
+
+            return proposals2
+
+        def select_proposals(self, current_time, queue):
+            result = []
+
+            start_time = current_time + self.lookahead_time
+            end_time = start_time + self.batch_interval
+
+            for request in queue:
+                arrival_time = request['arr_t']  # Assuming get_arrival_time method exists in Proposal class
+
+                if arrival_time < end_time:
+                    result.append(request)
+                else:
+                    break
+
+            return result
+
+        def reorder_proposals(self, proposals):
+                # A partition of the proposals according to the road of the arrival lane.
+                partition = {}
+
+                for proposal in proposals:
+                    lane_id = proposal['arr_lane']  # Assuming this is equivalent to getArrivalLaneID
+
+                    if lane_id in partition:
+                        partition[lane_id].append(proposal)
+                    else:
+                        partition[lane_id] = [proposal]
+
+                # Combine the proposals according to the partition
+                result = []
+                for road_proposals in partition.values():
+                    result.extend(road_proposals)
+
+                return result
+
+
+    
+class GeneticManager(DresnerManager):
+    def __init__(self):
+        super().__init__()
+        self.reordering_strategy = GeneticReordering()
+        self.queue = []
+        self.next_processing_time = 0.0
+        self.next_proposal_deadline = 0.0
+        self.processing_interval = 2.0
+        self.last_vin_in_batch = set()
+
+    
+    def receive_V2I(self, sender, message):
+        if message['type'] == 'request':
+            if self.crash_happened:
+                reply_message = {
+                    'type': 'reject',
+                    'timeout': 1
+                }
+                ComSystem.I2V(sender, reply_message)
+            reservation = self.check_request(message)
+            if reservation:
+                reply_message = {
+                    'type': 'confirm',
+                    'reservation': reservation
+                }
+                self.res_registery[message['veh_id']] = reservation['res_id']
+                ComSystem.I2V(sender, reply_message)
+            else: 
+                reply_message = {
+                    'type': 'reject',
+                    'timeout': 1
+                }
+                ComSystem.I2V(sender, reply_message)
+        elif message['type'] == 'change-request':
+            pass
+        elif message['type'] == 'cancel':
+            # process cancel with P
+            pass
+        elif message['type'] == 'done':
+            # record any statistics supplied in message
+            # process cancel with P
+            self.res_registery.pop(message['veh_id']) # dict.pop(key)返回value并删除
+            ComSystem.I2V(sender, {
+                'type': 'acknowledge',
+                'res_id': message['res_id']
+            })
+        elif message["type"]== "fault":
+            self.crash_occured()
+
+    def geneticAct(self,timeStep):#
+        if self.base_policy.get_current_time() >= self.next_processing_time:
+            vin_in_batch = self.process_batch()
+            
+            # if IS_HIGHLIGHT_VEHICLE_IN_BATCH:
+            #     for vin in self.last_vin_in_batch:
+            #         Debug.remove_vehicle_color(vin)
+            #     for vin in vin_in_batch:
+            #         Debug.set_vehicle_color(vin, VEHICLE_IN_BATCH_COLOR)
+                
+                # self.last_vin_in_batch = vin_in_batch
+            
+            self.next_processing_time = self.reordering_strategy.get_next_processing_time()
+            self.next_proposal_deadline = self.reordering_strategy.get_next_proposal_deadline()
+
+            # After updating the proposal deadline, immediately confirm/reject
+            # the indexed proposal in the queue whose expiration time is before
+            # the new proposal deadline.
+            self.try_reserve_for_proposals_before_time(self.next_proposal_deadline)
+
+    def process_batch(self):
+        vin_in_batch = set()
+
+        current_time = self.base_policy.get_current_time()
+
+        # Ensure that no proposal in the queue is before the deadline
+        # This is a direct translation of the assert statement in Java
+        assert len(self.queue) == 0 or self.queue[0].get_proposal().get_arrival_time() >= self.next_proposal_deadline
+
+        # Retrieve the batch (the set of indexed proposals)
+        batch = self.reordering_strategy.get_batch(current_time, self.queue)
+
+        # Confirm or reject the proposals in the batch according to the new ordering
+        for i_proposal in batch:
+            self.try_reserve(i_proposal)
+            vin_in_batch.add(i_proposal.get_request().get_vin())
+
+        return vin_in_batch
+    
+
+    def try_reserve(self, i_proposal):
+        l = [i_proposal.get_proposal()]  # Create a list with the proposal
+        msg = i_proposal.get_request()
+        reserve_param = self.base_policy.find_reserve_param(msg, l)
+        
+        if reserve_param is not None:
+            self.base_policy.send_confirm_msg(msg['request_id'], reserve_param)
+            # Remove a set of indexed proposals (including the given one) from the queue
+            for i_proposal2 in i_proposal.get_proposal_group():
+                self.queue.remove(i_proposal2)  # Assuming queue supports direct removal
+        else:
+            # Remove the indexed proposal from the queue
+            self.queue.remove(i_proposal)
+            # Shrink the proposal group
+            ip_group = i_proposal.get_proposal_group()
+            if i_proposal in ip_group:
+                ip_group.remove(i_proposal)
+                # If the proposal group is empty, no proposal left for the request message
+                # and need to send the reject message
+                if not ip_group:
+                    self.base_policy.send_reject_msg(msg['vin'],
+                                                     msg['request_id'],
+                                                     'NO_CLEAR_PATH')  # Assuming 'NO_CLEAR_PATH' is a constant or enum value
+            else:  # The removal is unsuccessful
+                raise RuntimeError("BatchModeRequestHandler: Proposal Group error: unable to remove an indexed proposal.")
+            
+    def process_request_msg(self, msg):
+        vin = msg['veh_id']
+
+
+        # # If the vehicle has got a reservation already, reject it.
+        # if self.base_policy.has_reservation(vin):
+        #     self.base_policy.send_reject_msg(vin,
+        #                                      msg['request_id'],
+        #                                      'CONFIRMED_ANOTHER_REQUEST')  # Assuming this is a constant or an enum value
+        #     if self.requestSC is not None:
+        #         self.requestSC.incr_num_of_confirmed_another_request()
+        #     return
+
+        # First, remove the proposals of the vehicle (if any) in the queue.
+        self.remove_request_by_veh_id(vin)
+
+        current_time = self.base_policy.get_current_time()
+        proposals = msg['proposals']  # Assuming this key exists and contains a list of proposals
+
+        # Filter the proposals
+        filter_result = self.base_policy.standard_proposals_filter(proposals, current_time)
+
+        if filter_result.is_no_proposal_left():
+            # Reject immediately since the existing proposals of the vehicle have been removed from the queue.
+            self.base_policy.send_reject_msg(vin,
+                                             msg['request_id'],
+                                             filter_result.get_reason())
+            return
+
+        if self.is_all_proposals_late(msg):
+            # Immediately confirm/reject the remaining proposals.
+            reserve_param = self.base_policy.find_reserve_param(msg, filter_result.get_proposals())
+            if reserve_param is not None:
+                self.base_policy.send_confirm_msg(msg['request_id'], reserve_param)
+            else:
+                self.base_policy.send_reject_msg(vin, msg['request_id'], 'NO_CLEAR_PATH')
+            if self.requestSC is not None:
+                self.requestSC.incr_num_of_late_request()
+        else:
+            # Put the proposals in the queue and postpone the processing of these proposals.
+            self.put_proposals_into_queue(msg, current_time)
+            if self.requestSC is not None:
+                self.requestSC.incr_num_of_queued_request()
+
+    def remove_request_by_veh_id(self, vin):
+            self.queue = [request for request in self.queue if request['veh_id'] != vin]
+
+    def check_request(self, message): 
+        ex_arm = Map.getInstance().get_ex_arm(message['arr_arm'], message['turn_dir'])
+        ex_lane_list = self.get_ex_lane_list(message['arr_arm'], message['turn_dir'], message['arr_lane'])
+        for ex_lane in ex_lane_list:
+            ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
+            ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
+            acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
             exit_time = message['arr_t']  # Initialize exit time with the arrival time
 
             if acc_distance >= ju_shape_end_x[-1]: 
@@ -349,9 +940,30 @@ class DresnerManager(BaseInterManager):
                     'exit_time': exit_time  # Include the calculated exit time
                 }
         return None
+    
+    def check_cells_stepwise_boss(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,grid):
+        temp_flag = True
+        inital_t = message['arr_t']
+        message['inital_t'] = inital_t
+        loop_time = inital_t
+        while temp_flag:
+            result = self.check_cells_stepwise_time_increasing(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc,grid)
+            if result is not None:
+                return loop_time, ((loop_time-inital_t)+exit_time_acc) , exit_velocity_acc
+
+            result = self.check_cells_stepwise_time_increasing(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v,grid)
+            if result is not None:
+                return loop_time, ((loop_time-inital_t)+exit_time_const_v) , exit_velocity_const_v
+
+            loop_time += 1
+            message['arr_t'] = loop_time
 
             
-    def check_cells_stepwise(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc):
+
+    
+
+    def check_cells_stepwise_time_increasing(self, message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc,grid):
+        start_t = message['arr_t'] #Currtent time
         t = message['arr_t'] #Currtent time
         v = message['arr_v'] #Current speed
         x_1d = 0 # One dimensional positon along junciton path
@@ -403,18 +1015,22 @@ class DresnerManager(BaseInterManager):
             veh_dots_y_rt += y
             
             #Use grid.xy_to_ij to convert into the cell occupied by the vehicle at this time
-            i, j = self.res_grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
-            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.res_grid.t_start))
-            while t_slice[0] >= self.res_grid.cells.shape[2]:
-                self.res_grid.add_time_dimension()
+            i, j = self.grid.xy_to_ij(veh_dots_x_rt, veh_dots_y_rt)
+            t_slice = np.ones(i.shape, dtype=np.int16) * (round(t-self.grid.t_start))
+            while t_slice[0] >= self.grid.cells.shape[2]:
+                self.grid.add_time_dimension()
             
             # Check whether all occupied grid points are empty
-            if np.sum(self.res_grid.cells[i, j, t_slice] != -1) == 0:
-                self.res_grid.cells[i, j, t_slice] = message['veh_id']
+            if np.sum(self.grid.cells[i, j, t_slice] != -1) == 0:
+                self.grid.cells[i, j, t_slice] = message['veh_id']
+                # if message['veh_id']==1:
+                #     print('i:',i)
+                #     print('j:',j)
+                #     print('t_slice:',t_slice)
             else:
                 # Planning failed, return False after clearing traces
-                self.res_grid.clear_veh_cell(message['veh_id'])
-                return False
+                self.grid.clear_veh_cell(message['veh_id'])
+                return None
 
             # Update position, velocity, acceleration, and shape
             x_1d += v * veh_dt + acc[a_idx][1] / 2 * veh_dt ** 2
@@ -428,14 +1044,178 @@ class DresnerManager(BaseInterManager):
         occ_dura = max((v-inter_v_lim_min)/message['max_dec'] + message['veh_len']/v, min_gen_ht)
         occ_start = math.floor(t - (occ_dura / veh_dt))
         occ_end = math.ceil(t)
-        for record in self.res_grid.ex_lane_record[ex_arm + str(ex_lane)]:
+        for record in self.grid.ex_lane_record[ex_arm + str(ex_lane)]:
             if not (record[1] > occ_end or record[2] < occ_start):
-                self.res_grid.clear_veh_cell(message['veh_id'])
-                return False
+                self.grid.clear_veh_cell(message['veh_id'])
+                return None
 
-        self.res_grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
-        return True
+        self.grid.ex_lane_record[ex_arm + str(ex_lane)].append([message['veh_id'], occ_start, occ_end])
+        return start_t
+
+    def check_request(self, message): 
+        ex_arm = Map.getInstance().get_ex_arm(message['arr_arm'], message['turn_dir'])
+        ex_lane_list = self.get_ex_lane_list(message['arr_arm'], message['turn_dir'], message['arr_lane'])
+        for ex_lane in ex_lane_list:
+            ju_track = Map.getInstance().get_ju_track(message['arr_arm'], message['turn_dir'], message['arr_lane'], ex_lane)
+            ju_shape_end_x = Track.cal_ju_shape_end_x(ju_track)
+            acc_distance = (inter_v_lim**2 - message['arr_v']**2) / 2 / message['max_acc']
+            exit_time_acc=0  # Initialize exit time with the arrival time
+            exit_time_const_v=0
+            exit_v_acc=0    
+            exit_v_const_v=0
+
+            if acc_distance >= ju_shape_end_x[-1]: 
+                # Accelerate the whole process
+                acc_acc = [[message['arr_t'], message['max_acc']]]
+                # Estimate exit time assuming constant acceleration over the distance
+                exit_time_acc  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                exit_velocity_acc = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+            else:
+                # Acceleration-constant speed
+                acc_time = (inter_v_lim - message['arr_v']) / message['max_acc']
+                constant_speed_distance = ju_shape_end_x[-1] - acc_distance
+                constant_speed_time = constant_speed_distance / inter_v_lim
+                exit_time_acc  += acc_time + constant_speed_time
+                exit_velocity_acc = inter_v_lim
+
+                acc_acc = [
+                    [message['arr_t'], message['max_acc']], 
+                    [message['arr_t'] + acc_time, 0]
+                ]
+
+            if message['arr_v'] < inter_v_lim_min:
+                acc_distance_c = (8**2 - message['arr_v']**2) / 2 / message['max_acc']
+                if acc_distance_c >= ju_shape_end_x[-1]: 
+                    acc_const_v = [[message['arr_t'], message['max_acc']]]
+                    exit_time_const_v  += ((2 * ju_shape_end_x[-1]) / message['max_acc']) ** 0.5
+                    exit_velocity_const_v = (message['arr_v']**2 + 2 * message['max_acc'] * ju_shape_end_x[-1]) ** 0.5
+                else:
+                    acc_time_c = (8 - message['arr_v']) / message['max_acc']
+                    constant_speed_distance_c = ju_shape_end_x[-1] - acc_distance_c
+                    constant_speed_time_c = constant_speed_distance_c / 8
+                    exit_time_const_v  += acc_time_c + constant_speed_time_c
+                    exit_velocity_const_v = 8
+
+                    acc_const_v = [
+                        [message['arr_t'], message['max_acc']], 
+                        [message['arr_t'] + acc_time_c, 0]
+                    ]
+            else:
+                acc_const_v = [[message['arr_t'], 0]]
+                constant_speed_distance = ju_shape_end_x[-1]
+                constant_speed_time = constant_speed_distance / message['arr_v']
+                exit_time_const_v += constant_speed_time
+                exit_velocity_const_v = message['arr_v']
+
+
+        return message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v
     
+    
+
+
+    
+    # def reserve_list_of_requests(self, requests):
+    #     temp_grid = DresnerResGrid(0.5)
+    #     temp_grid.cells = self.grid.cells.copy()
+    #     result_list=[]
+    #     for request in requests:
+    #         message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v, exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v= self.check_request(request)
+    #         start_time, exit_time, exit_velocity = self.check_cells_stepwise_boss(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc, acc_const_v,exit_time_acc,exit_time_const_v,exit_velocity_acc,exit_velocity_const_v ,temp_grid)
+    #         result_list.append((message,start_time, exit_time, exit_velocity))
+    #     return temp_grid, result_list
+    
+    # def evaluate_chromosome(self,temp_grid, requests):
+    #     temp_grid, result_list = self.reserve_list_of_requests(requests)
+    #     total_time = 0 
+    #     for result in result_list:
+    #         total_time += result[0]['inital_t']
+    #         total_time += result[2]
+    #         total_time += self.calculate_travel_time(result[3],veh_param['max_acc'] , arm_v_lim, 100)
+    #     return total_time
+    
+
+
+
+    # def calculate_travel_time(self,x, a, v_max, m):
+    #     # Step 1: Calculate distance needed to reach v_max
+    #     d_acc = (v_max**2 - x**2) / (2 * a)
+        
+    #     if d_acc >= m:
+    #         # The object doesn't reach v_max within distance m
+    #         # Use quadratic equation to solve for t_total: 0.5*a*t^2 + x*t - m = 0
+    #         coeffs = [0.5 * a, x, -m]
+    #         roots = np.roots(coeffs)
+    #         # Filter out the negative root since time cannot be negative
+    #         t_total = max(roots)
+    #     else:
+    #         # The object reaches v_max
+    #         # Calculate time to reach v_max
+    #         t_acc = (v_max - x) / a
+    #         # Calculate remaining distance after reaching v_max
+    #         d_const = m - d_acc
+    #         # Calculate time to cover d_const at v_max
+    #         t_const = d_const / v_max
+    #         # Total time is sum of t_acc and t_const
+    #         t_total = t_acc + t_const
+        
+    #     return t_total
+
+    # def sortRequests(self, requests):
+    #     # Sort the requests by the arrival time
+    #     sorted_reservations = sorted(requests, key=lambda x: (x['arr_arm'], x['arr_lane'], x['arr_t']))
+    #     return sorted_reservations
+
+    # def initialize_population(pop_size, num_reservations):
+    #     population = []
+    #     for _ in range(pop_size):
+    #         individual = np.random.permutation(num_reservations).tolist()
+    #         population.append(individual)
+    #     return population
+    
+    # def fitness_function(individual):
+    #     # Reconstruct the sequence of reservations from the individual
+    #     ordered_requests = [sorted_reservations[i] for i in individual]
+        
+    #     # Use your evaluate_chromosome function here
+    #     total_time = self.evaluate_chromosome(temp_grid, ordered_requests)  # You need to define temp_grid and the function
+
+    #     # The fitness value could be the total time, or its inverse if you want to maximize the fitness
+    #     return total_time
+
+    # def ga_fitness_function(solution, solution_idx):
+    #     return fitness_function(solution)
+
+    # ga_instance = pygad.GA(num_generations=50,
+    #                     num_parents_mating=5,
+    #                     fitness_func=ga_fitness_function,
+    #                     sol_per_pop=pop_size,
+    #                     num_genes=len(sorted_reservations),
+    #                     gene_type=int,
+    #                     init_range_low=0,
+    #                     init_range_high=len(sorted_reservations)-1,
+    #                     parent_selection_type="tournament",
+    #                     crossover_type="single_point",
+    #                     mutation_type="random",
+    #                     mutation_percent_genes=10)
+
+    # ga_instance.run()
+            
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class DresnerResGrid:
     '''a grid representation of intersection area'''
     def __init__(self, cell_size):
@@ -641,8 +1421,12 @@ class ComSystem:
         receiver.receive_I2V(message)
 
     @staticmethod
-    def I_broadcast(message):
+    def I_broadcast(message,evasive_manouves):
         for group, vehs in simulator.Simulator.getInstance().all_veh.items():
             for veh in vehs:
-                veh.receive_broadcast(message)
+                if veh._id in evasive_manouves.keys():
+                    message["evade"]= evasive_manouves[veh._id]
+                    veh.receive_broadcast(message)
+                else:
+                    veh.receive_broadcast(message)
         

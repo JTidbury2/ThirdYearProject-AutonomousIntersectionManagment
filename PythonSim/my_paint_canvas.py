@@ -79,12 +79,13 @@ class MyPaintCanvas(QWidget):
         '''
         In a logical coordinate system, calculate the shape required for intersection drawing
         '''
-        x1 = self.lw * self.NSl
-        x2 = x1 + self.tr 
-        x3 = x2 + self.al
-        y1 = self.lw * self.EWl
-        y2 = y1 + self.tr
-        y3 = y2 + self.al
+        #lw = lane width tr = turn radius al = arm length
+        x1 = self.lw * self.NSl  # x1 = 3 * lane_width
+        x2 = x1 + self.tr # x2 = x1 + turn_radius
+        x3 = x2 + self.al # x3 = x2 + arm_length
+        y1 = self.lw * self.EWl # y1 = 3 * lane_width
+        y2 = y1 + self.tr # y2 = y1 + turn_radius
+        y3 = y2 + self.al 
         edge_Qlines = [
             QLineF(-x3, -y1, -x2, -y1), # 西上
             QLineF(-x3, y1, -x2, y1), # 西下
@@ -205,7 +206,7 @@ class MyPaintCanvas(QWidget):
             y = - (y2 + (-veh.inst_x))
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Nex']: 
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -215,7 +216,7 @@ class MyPaintCanvas(QWidget):
             y = - (y2 + (veh.inst_x))
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Sap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -225,7 +226,7 @@ class MyPaintCanvas(QWidget):
             y = y2 + (-veh.inst_x)
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Sex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -235,7 +236,7 @@ class MyPaintCanvas(QWidget):
             y = y2 + veh.inst_x
             rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Wap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -245,7 +246,7 @@ class MyPaintCanvas(QWidget):
             y = self.lw / 2 + self.lw * veh.inst_lane
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Wex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -255,7 +256,7 @@ class MyPaintCanvas(QWidget):
             y = - (self.lw / 2 + self.lw * veh.inst_lane)
             rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Eap']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -265,7 +266,7 @@ class MyPaintCanvas(QWidget):
             y = - (self.lw / 2 + self.lw * veh.inst_lane)
             rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
         for veh in Simulator.getInstance().all_veh['Eex']:
             if veh.faultyCar:
                 qp.setBrush(QColor(255, 0, 0))
@@ -275,65 +276,96 @@ class MyPaintCanvas(QWidget):
             y = self.lw / 2 + self.lw * veh.inst_lane
             rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
             qp.drawRect(rect)
-            # qp.drawText(rect.bottomLeft(), str(veh._id))
-        for veh in Simulator.getInstance().all_veh['ju']:
-            if veh.faultyCar and veh.collidedCar:
-                qp.setBrush(QColor(255, 0, 0))
-            elif veh.faultyCar:
-                qp.setBrush(QColor(0, 255, 0))
-            elif veh.collidedCar:
-                qp.setBrush(QColor(0, 0, 255))
-            else:
-                qp.setBrush(QColor(49, 58, 135))
-            # Find on which paragraph
-            seg_idx = 0
-            for (i, end_x) in enumerate(veh.track.ju_shape_end_x):
-                if veh.inst_x > end_x: # is greater than the end point of the i-th segment, then it is in the (i+1) segment
-                    seg_idx = i + 1
-                    break
-            seg = veh.track.ju_track[seg_idx] #The shape of this segment
-            if seg_idx > 0:
-                seg_x = veh.inst_x - veh.track.ju_shape_end_x[seg_idx - 1] # The length of this segment
-            else:
-                seg_x = veh.inst_x
-            if seg[0] == 'line': # It's a straight line, great
-                if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
-                    x = seg[1][0]
-                    if seg[1][1] < seg[2][1]: # from top to bottom
-                        y = seg[1][1] + seg_x
-                        rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
-                        qp.drawRect(rect)
-                        qp.drawText(rect.bottomLeft(), str(veh._id))
-                    else: # from bottom to top
-                        y = seg[1][1] - seg_x
-                        rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
-                        qp.drawRect(rect)
-                        qp.drawText(rect.bottomLeft(), str(veh._id))
-                else: #Horizontal line
-                    y = seg[1][1]
-                    if seg[1][0] < seg[2][0]: # from left to right
-                        x = seg[1][0] + seg_x
-                        rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
-                        qp.drawRect(rect)
-                        qp.drawText(rect.bottomLeft(), str(veh._id))
-                    else: # from right to left
-                        x = seg[1][0] - seg_x
-                        rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
-                        qp.drawRect(rect)
-                        qp.drawText(rect.bottomLeft(), str(veh._id))
-            else: # circular curve
-                qp.save()
-                qp.translate(seg[3][0], seg[3][1])
-                if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
-                    rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
-                    qp.rotate(- rotation) # rotate is the number of degrees clockwise
-                    rect = QRectF(seg[4] - veh.veh_wid/2, - veh.veh_len_front, veh.veh_wid, veh.veh_len)
-                    qp.drawRect(rect)
-                    qp.drawText(rect.bottomLeft(), str(veh._id))
+            qp.drawText(rect.bottomLeft(), str(veh._id))
+        if Simulator.getInstance().rl_swap or Simulator.getInstance().evasion_swap:
+            for veh in Simulator.getInstance().all_veh['ju']:
+                if veh.faultyCar and veh.collidedCar:
+                    qp.setBrush(QColor(255, 0, 0))
+                elif veh.faultyCar:
+                    qp.setBrush(QColor(0, 255, 0))
+                elif veh.collidedCar:
+                    qp.setBrush(QColor(0, 0, 255))
                 else:
-                    rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
-                    qp.rotate(- rotation)
-                    rect = QRectF(seg[4] - veh.veh_wid/2, - veh.veh_len_back, veh.veh_wid, veh.veh_len)
-                    qp.drawRect(rect)
-                    qp.drawText(rect.bottomLeft(), str(veh._id))
+                    qp.setBrush(QColor(49, 58, 135))
+
+                qp.save()
+                qp.translate(veh.rl_x, -veh.rl_y)  # Move to the vehicle's position
+                qp.rotate(- veh.heading * 180/math.pi +90)  # Apply the vehicle's rotation, negate if necessary
+
+                # Assuming the vehicle's center of rotation is at its center
+                rect = QRectF(-veh.veh_wid / 2, -veh.veh_len / 2, veh.veh_wid, veh.veh_len)
+                qp.drawRect(rect)  # Draw the vehicle as a rectangle
+                qp.drawText(rect.bottomLeft(), str(veh._id))  # Label the vehicle with its ID
+
                 qp.restore()
+
+
+        else: 
+            for veh in Simulator.getInstance().all_veh['ju']:
+                if veh.faultyCar and veh.collidedCar:
+                    qp.setBrush(QColor(255, 0, 0))
+                elif veh.faultyCar:
+                    qp.setBrush(QColor(0, 255, 0))
+                elif veh.collidedCar:
+                    qp.setBrush(QColor(0, 0, 255))
+                else:
+                    qp.setBrush(QColor(49, 58, 135))
+                # Find on which paragraph
+                seg_idx = 0
+                for (i, end_x) in enumerate(veh.track.ju_shape_end_x):
+                    if veh.inst_x > end_x: # is greater than the end point of the i-th segment, then it is in the (i+1) segment
+                        seg_idx = i + 1
+                        break
+                seg = veh.track.ju_track[seg_idx] #The shape of this segment
+                if seg_idx > 0:
+                    seg_x = veh.inst_x - veh.track.ju_shape_end_x[seg_idx - 1] # The length of this segment
+                else:
+                    seg_x = veh.inst_x
+                if seg[0] == 'line': # It's a straight line, great
+                    if abs(seg[1][0] - seg[2][0]) < 1e-5: # vertical bar
+                        x = seg[1][0]
+                        #print("Paint x",x)
+                        if seg[1][1] < seg[2][1]: # from top to bottom
+                            y = seg[1][1] + seg_x
+                            #print("Paint y",y)
+                            rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_back, veh.veh_wid, veh.veh_len)
+                            qp.drawRect(rect)
+                            qp.drawText(rect.bottomLeft(), str(veh._id))
+                        else: # from bottom to top
+                            y = seg[1][1] - seg_x
+                            #print("Paint y",y)
+                            rect = QRectF(x - veh.veh_wid/2, y - veh.veh_len_front, veh.veh_wid, veh.veh_len)
+                            qp.drawRect(rect)
+                            qp.drawText(rect.bottomLeft(), str(veh._id))
+                    else: #Horizontal line
+                        y = seg[1][1]
+                        #print("Paint y",y)
+                        if seg[1][0] < seg[2][0]: # from left to right
+                            x = seg[1][0] + seg_x
+                            #print("Paint x",x)
+                            rect = QRectF(x - veh.veh_len_back, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
+                            qp.drawRect(rect)
+                            qp.drawText(rect.bottomLeft(), str(veh._id))
+                        else: # from right to left
+                            x = seg[1][0] - seg_x
+                            #print("Paint x",x)
+                            rect = QRectF(x - veh.veh_len_front, y - veh.veh_wid/2, veh.veh_len, veh.veh_wid)
+                            qp.drawRect(rect)
+                            qp.drawText(rect.bottomLeft(), str(veh._id))
+                else: # circular curve
+                    qp.save()
+                    #print("Paint seg,", seg)
+                    qp.translate(seg[3][0], seg[3][1])
+                    if seg[5][0] < seg[5][1]: # Trajectory counterclockwise
+                        rotation = seg[5][0] + seg_x / seg[4] * 180 / math.pi
+                        qp.rotate(- rotation) # rotate is the number of degrees clockwise
+                        rect = QRectF(seg[4] - veh.veh_wid/2, - veh.veh_len_front, veh.veh_wid, veh.veh_len)
+                        qp.drawRect(rect)
+                        qp.drawText(rect.bottomLeft(), str(veh._id))
+                    else:
+                        rotation = seg[5][0] - seg_x / seg[4] * 180 / math.pi
+                        qp.rotate(- rotation)
+                        rect = QRectF(seg[4] - veh.veh_wid/2, - veh.veh_len_back, veh.veh_wid, veh.veh_len)
+                        qp.drawRect(rect)
+                        qp.drawText(rect.bottomLeft(), str(veh._id))
+                    qp.restore()

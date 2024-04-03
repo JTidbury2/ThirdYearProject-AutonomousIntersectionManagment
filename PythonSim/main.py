@@ -5,6 +5,15 @@ import os
 import random
 
 import lib.settings
+from rl_agent import AgentInference
+
+
+env_config = '../rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
+agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
+model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
+rl_agent_export= AgentInference(env_config, agent_config, model_path)
+
+
 
 def exec_simulation():
     from PyQt5.QtWidgets import QApplication
@@ -12,17 +21,23 @@ def exec_simulation():
     from cal_delay import cal_metrics
 
     # Define the log directory and file name
+    print('Current working directory:')
+    print(os.getcwd())
     log_dir = 'log'
     log_fname = os.path.join(log_dir, 'log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S"))
+
 
     # Check if the log directory exists, and create it if it doesn't
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    log_fname = 'log/log %s.log' % time.strftime("%Y-%m-%d %H-%M-%S")
+
     logging.basicConfig(filename=log_fname, format='%(message)s', level=logging.DEBUG)
     logging.debug('t, veh._id, zone, lane, x, v, a')
     print(log_fname)
+
+
+
 
     app = QApplication(sys.argv)
     window = MyMainWindow()
@@ -30,6 +45,9 @@ def exec_simulation():
     app.exec_()
 
     # print('Simulation finished, banana')
+
+    print('Calculating metrics...')
+    print(os.path.exists(log_fname))
 
     metrics = cal_metrics(log_fname)
     for key, value in metrics.items():
@@ -52,13 +70,17 @@ if __name__ == '__main__':
     #Adjust traffic
     total_flow = int(sys.argv[2])
 
+
     random_traf = True if sys.argv[3] == "1" else False
     lib.settings.liveValues["random"]=random_traf
+
 
     #    # One lane is straight only
     #t_flow = total_flow / 4
     # Balance
+
     if not random_traf:
+
         l_flow = total_flow / 16
         t_flow = total_flow / 8
         r_flow = total_flow / 16
@@ -90,6 +112,7 @@ if __name__ == '__main__':
     }
     print('## %d = 4 * (%d + %d + %d)' % (total_flow, l_flow, t_flow, r_flow))
     print(lib.settings.veh_gen_rule_table)
+
 
     exec_simulation()
 

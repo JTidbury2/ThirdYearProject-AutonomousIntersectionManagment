@@ -49,19 +49,19 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "actions_per_axis": 10,
                 "duration": 13,  # [s]
                 "controlled_vehicles": 1,
-                "initial_vehicle_count": 30,
+                "initial_vehicle_count":45,
                 "spawn_probability": 1,
                 "screen_width": 1200,
                 "screen_height": 1200,
                 "centering_position": [0.5, 0.6],
                 "scaling": 5.5 * 1.3,
-                "collision_reward": -10,
+                "collision_reward": -15,
                 "high_speed_reward": 0.5,
                 "arrived_reward": 0,
-                "reward_speed_range": [-1, 1],
+                "reward_speed_range": [-2, 2],
                 "normalize_reward": True,
                 "offroad_terminal": True,
-                "alive_reward":1
+                "alive_reward":2
             }
         )
         return config
@@ -318,13 +318,13 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             ]
 
         # Challenger vehicle
-        self._spawn_vehicle(
-            60,
-            spawn_probability=1,
-            go_straight=True,
-            position_deviation=0.1,
-            speed_deviation=0,
-        )
+        # self._spawn_vehicle(
+        #     60,
+        #     spawn_probability=1,
+        #     go_straight=True,
+        #     position_deviation=0.1,
+        #     speed_deviation=0,
+        # )
 
         # Controlled vehicles
         self.controlled_vehicles = []
@@ -359,6 +359,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 [0,0],
                 speed=random_speed,
                 heading=random_heading,
+                controlled=True
             )
             try:
                 ego_vehicle.plan_route_to(destination)
@@ -415,6 +416,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         vehicle.plan_route_to("o:{}:{}".format(right_middle_left, destination_direction))
         vehicle.randomize_behavior()
         self.road.vehicles.append(vehicle)
+        self.road.vehicles_for_stoppage.append(vehicle)
         return vehicle
 
     def _clear_vehicles(self) -> None:

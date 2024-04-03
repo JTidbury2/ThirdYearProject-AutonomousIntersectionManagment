@@ -43,6 +43,48 @@ veh_param_1={
     'turn_dir': None,
         "type":1
 }
+# Slight differnt cars for random effect
+veh_param_1={
+    'veh_wid': 1.5,
+    'veh_len': 4,
+    'veh_len_front': 1, # The distance from the front bumper to the front axle
+    'max_v': 50,
+    'max_acc': 6,
+    'max_dec': 6,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None
+}
+
+veh_param_2={
+    'veh_wid': 2.2,
+    'veh_len': 5.5,
+    'veh_len_front': 1.2, # The distance from the front bumper to the front axle
+    'max_v': 30,
+    'max_acc': 2,
+    'max_dec': 3,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None
+}
+
+veh_param_3={
+    'veh_wid': 1,
+    'veh_len': 2.5,
+    'veh_len_front': 0.5, # The distance from the front bumper to the front axle
+    'max_v': 60,
+    'max_acc': 5,
+    'max_dec': 3,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None
+}
+
+random_veh_param = [veh_param, veh_param_1, veh_param_2, veh_param_3]
+
+
+
+########################## Car-following model parameter settings##################### #####
 
 veh_param_2={
     'veh_wid': 2.2,

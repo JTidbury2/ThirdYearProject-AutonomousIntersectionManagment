@@ -38,6 +38,7 @@ class Vehicle(RoadObject):
         heading: float = 0,
         speed: float = 0,
         predition_type: str = "constant_steering",
+        controlled: bool = False,
     ):
         super().__init__(road, position, heading, speed)
         self.prediction_type = predition_type
@@ -45,6 +46,7 @@ class Vehicle(RoadObject):
         self.crashed = False
         self.impact = None
         self.log = []
+        self.controlled = controlled
         self.history = deque(maxlen=self.HISTORY_SIZE)
 
     @classmethod
