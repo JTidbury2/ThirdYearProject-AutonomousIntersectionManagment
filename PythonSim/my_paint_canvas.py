@@ -1,4 +1,3 @@
-# import yaml
 import math
 
 from map import Map

@@ -15,8 +15,8 @@ turn_radius = 5 # The American Urban Street Design Guidelines require that the c
 arm_len = 100
 NS_lane_count = 3
 EW_lane_count = 3
-arm_v_lim = 16.66 # 60 km/h
-inter_v_lim = 11.11 # Speed ​​limit in intersection area, Human/Dresner/Xu will all use it
+arm_v_lim =  16.66  # 60 km/h
+inter_v_lim = 16.66 # Speed ​​limit in intersection area, Human/Dresner/Xu will all use it
 ########################## Vehicle parameter settings##################### #####
 veh_param = {
     'veh_wid': 2,
@@ -27,7 +27,21 @@ veh_param = {
     'max_dec': 4,
     'ap_arm': None,
     'ap_lane': None,
-    'turn_dir': None
+    'turn_dir': None,
+    "type":0
+}
+# Slight differnt cars for random effect
+veh_param_1={
+    'veh_wid': 1.5,
+    'veh_len': 4,
+    'veh_len_front': 1, # The distance from the front bumper to the front axle
+    'max_v': 50,
+    'max_acc': 6,
+    'max_dec': 6,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None,
+        "type":1
 }
 # Slight differnt cars for random effect
 veh_param_1={
@@ -72,6 +86,37 @@ random_veh_param = [veh_param, veh_param_1, veh_param_2, veh_param_3]
 
 ########################## Car-following model parameter settings##################### #####
 
+veh_param_2={
+    'veh_wid': 2.2,
+    'veh_len': 5.5,
+    'veh_len_front': 1.2, # The distance from the front bumper to the front axle
+    'max_v': 30,
+    'max_acc': 2,
+    'max_dec': 3,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None,
+        "type":2
+}
+
+veh_param_3={
+    'veh_wid': 1,
+    'veh_len': 2.5,
+    'veh_len_front': 0.5, # The distance from the front bumper to the front axle
+    'max_v': 60,
+    'max_acc': 5,
+    'max_dec': 3,
+    'ap_arm': None,
+    'ap_lane': None,
+    'turn_dir': None,
+        "type":3
+}
+
+random_veh_param = [veh_param, veh_param_1, veh_param_2, veh_param_3]
+
+
+
+########################## Car-following model parameter settings##################### #####
 cf_param = {
     'v0': 15, # 54 km/h, which is in line with the speed of ordinary urban main roads
     'T': 1.4,

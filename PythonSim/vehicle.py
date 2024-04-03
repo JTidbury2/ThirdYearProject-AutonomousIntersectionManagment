@@ -22,6 +22,8 @@ class BaseVehicle:
         self.max_acc = veh_param['max_acc']
         self.max_dec = veh_param['max_dec']
         self.track = Track(veh_param['ap_arm'], veh_param['ap_lane'], veh_param['turn_dir'])
+        self.turn_dir=veh_param["turn_dir"]
+        self.type=veh_param["type"]
 
         # dynamic
         self.timestep = timestep
@@ -77,8 +79,8 @@ class BaseVehicle:
             self.inst_x -= self.track.ju_shape_end_x[-1]
             self.inst_lane = self.track.ex_lane
             return True
-        
-        logging.debug("%d, %d, %s, %d, %.2f, %.2f, %.2f" % (self.timestep, self._id, self.zone, self.inst_lane, self.inst_x, self.inst_v, self.inst_a))
+        turn_val = 0 if self.turn_dir == 'l' else 1 if self.turn_dir == 't' else 2
+        logging.debug("%d, %d, %s, %d, %.2f, %.2f, %.2f, %s, %d" % (self.timestep, self._id, self.zone, self.inst_lane, self.inst_x, self.inst_v, self.inst_a,turn_val,self.type))
         return False
 
     def receive_broadcast(self, message):
@@ -329,8 +331,9 @@ class DresnerVehicle(BaseVehicle):
                     'max_acc': self.max_acc,
                     'max_dec': self.max_dec
                 })
-            if self.reservation :
-                #  and not self.crashOccured
+
+            if self.reservation and not self.crashOccured :
+
                 # If the reservation is successful, the acceleration will be executed according to the previously calculated plan.
                 for t, a in self.ap_acc_profile:
                     if self.timestep >= t:
@@ -361,7 +364,7 @@ class DresnerVehicle(BaseVehicle):
                 })
                 self.flag=False
                 # If the vehicle is faulty, initiate an immediate stop by applying maximum safe deceleration
-                self.inst_a = -10
+                self.inst_a = -50
                 # Optionally, log this event or take additional actions as necessary
                 logging.info(f"Faulty vehicle {self._id} stopping in the intersection.")
             else:

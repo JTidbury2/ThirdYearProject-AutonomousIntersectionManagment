@@ -2,6 +2,7 @@ import sys
 import time
 import logging
 import os
+import random
 
 import lib.settings
 from rl_agent import AgentInference
@@ -69,14 +70,17 @@ if __name__ == '__main__':
     #Adjust traffic
     total_flow = int(sys.argv[2])
 
-    random = True if sys.argv[3] == 1 else False
-    lib.settings.liveValues["random"]=random
+
+    random_traf = True if sys.argv[3] == "1" else False
+    lib.settings.liveValues["random"]=random_traf
 
 
     #    # One lane is straight only
     #t_flow = total_flow / 4
     # Balance
-    if not random:
+
+    if not random_traf:
+
         l_flow = total_flow / 16
         t_flow = total_flow / 8
         r_flow = total_flow / 16
