@@ -40,7 +40,7 @@ def main(num_runs, num_scenarios):
     all_results = {}
 
     for scenario in num_scenarios:
-        simulation_command = f'python main.py Dresner {scenario}'
+        simulation_command = f'python main.py Dresner {scenario} 0'
         print(f"Running simulation for scenario: {scenario}")
 
         # Initialize total metrics
@@ -81,7 +81,7 @@ def main(num_runs, num_scenarios):
             f.write("\n")
 
 if __name__ == '__main__':
-    number_of_runs = 100  # Specify the number of times you want to run the simulation
-    num_scenarios = [1000, 2500, 5000, 7500, 10000, 15000, 20000]
+    number_of_runs = 1  # Specify the number of times you want to run the simulation
+    num_scenarios = [500,1000, 2500]
 
     main(number_of_runs, num_scenarios)

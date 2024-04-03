@@ -1,9 +1,11 @@
 import csv
 import sys
-from lib.settings import veh_param, cf_param, inter_v_lim, arm_len, veh_dt, simu_t
-
+from lib.settings import veh_param, cf_param, inter_v_lim, arm_len, veh_dt, simu_t, liveValues, random_veh_param,arm_v_lim
+import math
 import numpy as np
 import matplotlib.pyplot as plt
+
+offsetArray = [[0.34,0.2354,1.4054,0.05],[0.235,0.24,0.34,-0.056],[0.35,0.25,0.35,0.08],[0,0,0,0]]
 
 def cal_metrics(fname):
     file = open(fname)
@@ -11,7 +13,7 @@ def cal_metrics(fname):
     
 
     # The columns are start_time, ju_track_len, removed_time, is_removed
-    veh_info_table = - np.ones((2000, 4))
+    veh_info_table = - np.ones((2000, 6))
     longest_crash_list = []  # Initialize as an empty list
 
     for i, row in enumerate(reader):
@@ -45,7 +47,8 @@ def cal_metrics(fname):
 
                 continue  # Continue to the next row
 
-        t, veh_id, zone, x = int(row[0]), int(row[1]), row[2].strip(), float(row[4])
+        t, veh_id, zone, x, turn_dir, type = int(row[0]), int(row[1]), row[2].strip(), float(row[4]), row[7].strip(), int(row[8])
+        offset2 = 2.5 if liveValues["random"] else 0
         if t >= simu_t / veh_dt:
             break
         if zone == 'ap':
@@ -55,8 +58,11 @@ def cal_metrics(fname):
             veh_info_table[veh_id, 1] = max(veh_info_table[veh_id, 1], x)
         if zone == 'ex':
             veh_info_table[veh_id, 2] = max(veh_info_table[veh_id, 2], t)
-            if x >= arm_len + (veh_param['veh_len'] - veh_param['veh_len_front']):
+            if x >= arm_len -offset2+ (veh_param['veh_len'] - veh_param['veh_len_front']):
                 veh_info_table[veh_id, 3] = 1
+                veh_info_table[veh_id, 4] = turn_dir
+                veh_info_table[veh_id, 5] = type
+
 
     metrics = {}
 
@@ -72,11 +78,65 @@ def cal_metrics(fname):
     metrics['actual_total_flow'] = actual_total_flow
 
     # Calculate delays
+    # print("veh_info_table", veh_info_table)
     # real time
     actual_time = (veh_info_table[:, 2] - veh_info_table[:, 0]) * veh_dt
     #Ideal passing time, ignore intersections and other vehicles, and pass at a constant speed
-    ideal_time = (arm_len * 2 + veh_info_table[:, 1]) / cf_param['v0']
-    delay = actual_time - ideal_time
+    # print("veh_info_table[:, 5]", veh_info_table[:, 5])
+    total_distance = arm_len * 2 + veh_info_table[:, 1]
+
+
+    # print("total_distance", total_distance)
+    ideal_time = []
+    for index,value in enumerate(total_distance):
+        average_max_v = min(random_veh_param[int(veh_info_table[index][5])]["max_v"], arm_v_lim)
+        avearge_max_acc = random_veh_param[int(veh_info_table[index][5])]["max_acc"]
+        if(value<(average_max_v**2-cf_param["v0"]**2)/(2*avearge_max_acc)):
+            # print("The total distance is too short, the vehicle will not reach the maximum speed.")
+            # Coefficients for the quadratic equation
+            a = 0.5 * avearge_max_acc
+            b = cf_param["v0"]
+            c = -value
+            
+            # Calculate the discriminant
+            discriminant = b**2 - 4*a*c
+            
+            # Assuming discriminant is positive, so we have real solutions
+            if discriminant >= 0:
+                # Only the positive root is physically meaningful
+                ideal_time.append(((-b + math.sqrt(discriminant)) / (2 * a))+offsetArray[int(veh_info_table[index][4])][int(veh_info_table[index][5])])
+                # print(f"The ideal time to cover the distance is {ideal_time} seconds.")
+            else:
+                # print("No real solution exists. Check the input parameters.")
+                pass
+        else:
+            # print("The total distance is long enough for the vehicle to reach the maximum speed.")
+                # Step 1: Calculate distance needed to reach max speed
+            distance_to_max_speed = (average_max_v**2 - cf_param["v0"]**2) / (2 * avearge_max_acc)
+            
+            # Step 2: Calculate time to reach max speed
+            time_to_max_speed = (average_max_v - cf_param["v0"]) / avearge_max_acc
+            
+            # Step 3: Calculate remaining distance to be covered at max speed
+            remaining_distance = value - distance_to_max_speed
+            
+            # Step 4: Calculate time to cover the remaining distance at max speed
+            time_at_max_speed = remaining_distance / average_max_v
+            
+            # Step 5: Sum up the times
+            ideal_time.append(time_to_max_speed + time_at_max_speed+offsetArray[int(veh_info_table[index][4])][int(veh_info_table[index][5])])
+
+        
+
+
+    # ideal_time = (arm_len * 2 + veh_info_table[:, 1]) / cf_param['v0']
+    # print("ideal_time", ideal_time)
+    # print("actual_time", actual_time)
+    # print("type/way pairng", [(int(veh_info_table[index][4]),int(veh_info_table[index][5])) for index in range(len(veh_info_table))])
+
+    delay = actual_time - ideal_time #round of stuff that i found
+    delay = [max(0, x) for x in delay]
+    # print("Delay", delay)
     metrics['avg_delay'] = np.mean(delay)
     metrics['max_delay'] = np.max(delay)
     metrics['longest_crash_list'] = longest_crash_list  

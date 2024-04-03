@@ -3,7 +3,7 @@ import logging
 
 from vehicle import Vehicle
 from inter_manager import inter_manager
-from lib.settings import arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues
+from lib.settings import lane_width, turn_radius, arm_len, veh_dt, veh_param, cf_param, NS_lane_count, EW_lane_count, veh_gen_rule_table, min_gen_hs, gen_init_v, crashValues, liveValues, random_veh_param
 import random
 
 import numpy as np
@@ -27,9 +27,9 @@ class Simulator:
             Simulator._instance = self
 
         self.timestep = 0
-        self.random_count = random.randint(15, 45)
+        self.random_count = random.randint(15, 35)
         self.crash_count=0
-        self.crash_time=3000
+        self.crash_time=4000
         self.sim_over=False
 
         # Generate vehicle counts for vehicle ID assignment
@@ -76,7 +76,7 @@ class Simulator:
         crashed_vehicles= inter_manager.check_for_collision(self.all_veh["ju"])
         
         self.crash_count= len(crashed_vehicles)
-        if inter_manager.check_for_collision_noCars() and self.crash_time==3000:
+        if inter_manager.check_for_collision_noCars() and self.crash_time==4000:
             self.crash_time=self.timestep+100
 
 
@@ -158,7 +158,12 @@ class Simulator:
     def make_veh(self, ap_arm, ap_lane, turn_dir):
         '''Create a vehicle object and return'''
         self.vehicleCount+=1
-        new_veh_param = copy.deepcopy(veh_param)
+        if liveValues["random"]:
+            new_veh_param = copy.deepcopy(random_veh_param[random.randint(0,3)])
+      
+        else: 
+            new_veh_param = copy.deepcopy(veh_param)
+
         new_veh_param['ap_arm'] = ap_arm
         new_veh_param['ap_lane'] = ap_lane
         new_veh_param['turn_dir'] = turn_dir
@@ -168,7 +173,7 @@ class Simulator:
         if self.vehicleCount == self.random_count:
             faultCar = True
 
-
+        
         new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar,crashValues["crashOccured"])
         self.gen_veh_count += 1
         return new_veh
