@@ -79,6 +79,7 @@ class DresnerManager(BaseInterManager):
         self.set_up_rlVehicle()
         self.evasion_swap=False
         self.keys_to_remove=[]
+        self.rl_sim_on=True #TODO FLag for RL simulation
 
     def set_up_rlVehicle(self):
         temp = np.array([0,0])
@@ -276,23 +277,27 @@ class DresnerManager(BaseInterManager):
             self.crash_occured(message["veh_id"])
 
     def crash_occured(self,veh_id):
-        self.evasion_swap=True
-        self.crash_happened=True
-        crashValues['crashOccured']=True
-        print("INTER_MANAGER:Crash occured")
-        temp = None
-        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
-        # print("INTER_MANAGER:veh_id",veh_id)
-        # print("INTER_MANAGER:self.timestep",self.timestep)
-        # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
-        if (veh_id,self.timestep) in self.evasion_plan_DB:
-            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep)])
-            temp = self.evasion_plan_DB[(veh_id,self.timestep)]
+        if not self.rl_sim_on:
+            self.evasion_swap=True
+            self.crash_happened=True
+            crashValues['crashOccured']=True
+            print("INTER_MANAGER:Crash occured")
+            temp = None
+            # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+            # print("INTER_MANAGER:veh_id",veh_id)
+            # print("INTER_MANAGER:self.timestep",self.timestep)
+            # print("INTER_MANAGER:self.evasion_plan_DB",self.evasion_plan_DB)
+            if (veh_id,self.timestep) in self.evasion_plan_DB:
+                print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep)])
+                temp = self.evasion_plan_DB[(veh_id,self.timestep)]
+            else:
+                print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
+                temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
+            ComSystem.I_broadcast({'type': 'crash'},temp)
         else:
-            print("INTER_MANAGER:self.evasion_plan_DB[(",veh_id,self.timestep,")]",self.evasion_plan_DB[(veh_id,self.timestep+1)])
-            temp = self.evasion_plan_DB[(veh_id,self.timestep+1)]
-        ComSystem.I_broadcast({'type': 'crash'},temp)
-
+            self.crash_happened=True
+            crashValues['crashOccured']=True
+            ComSystem.I_broadcast({'type': 'crash'})
     
 
     def gen_ex_lane_table(self):
@@ -424,7 +429,7 @@ class DresnerManager(BaseInterManager):
 
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
                 # print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
-                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
+                if self.rl_sim_on or self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
                     self.keys_to_remove=[]
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -439,7 +444,7 @@ class DresnerManager(BaseInterManager):
                     print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
                 # print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
-                if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
+                if self.rl_sim_on or self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
                     self.keys_to_remove=[]
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
@@ -1433,12 +1438,17 @@ class ComSystem:
         receiver.receive_I2V(message)
 
     @staticmethod
-    def I_broadcast(message,evasive_manouves):
-        for group, vehs in simulator.Simulator.getInstance().all_veh.items():
-            for veh in vehs:
-                if veh._id in evasive_manouves.keys():
-                    message["evade"]= evasive_manouves[veh._id]
+    def I_broadcast(message,evasive_manouves=None):
+        if simulator.Simulator.getInstance().rl_sim_on:
+            for group, vehs in simulator.Simulator.getInstance().all_veh.items():
+                for veh in vehs:
                     veh.receive_broadcast(message)
-                else:
-                    veh.receive_broadcast(message)
+        else:
+            for group, vehs in simulator.Simulator.getInstance().all_veh.items():
+                for veh in vehs:
+                    if veh._id in evasive_manouves.keys():
+                        message["evade"]= evasive_manouves[veh._id]
+                        veh.receive_broadcast(message)
+                    else:
+                        veh.receive_broadcast(message)
         
