@@ -43,13 +43,13 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "action": {
                     "type": "DiscreteAction",
                     "actions_per_axis": 10,
-                    "acceleration_range": [-5.0, 5.0],
-                    "steering_range": [-0.8, 0.8]
+                    "acceleration_range": [-8.0, 8.0],
+                    "steering_range": [-0.7, 0.7]
                 },
                 "actions_per_axis": 10,
-                "duration": 13,  # [s]
+                "duration": 26,  # [s]
                 "controlled_vehicles": 1,
-                "initial_vehicle_count":45,
+                "initial_vehicle_count":60,
                 "spawn_probability": 1,
                 "screen_width": 1200,
                 "screen_height": 1200,
@@ -350,13 +350,17 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             max_speed = ego_lane.speed_limit
 
             # Generate a random speed between 0 and max_speed
-            random_speed = self.np_random.uniform(0, 3*max_speed/4)
+            random_speed = self.np_random.uniform(4, 14)
 
             # Generate a random heading in radians. Assuming full 360-degree freedom, 0 to 2*pi radians.
             random_heading = self.np_random.uniform(0, 2 * np.pi)
+            
+            random_x = self.np_random.uniform(-13, 13)
+
+            random_y = self.np_random.uniform(-13, 13)
             ego_vehicle = self.action_type.vehicle_class(
                 self.road,
-                [0,0],
+                [random_x,random_y],
                 speed=random_speed,
                 heading=random_heading,
                 controlled=True
