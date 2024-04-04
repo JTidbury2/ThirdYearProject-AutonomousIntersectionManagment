@@ -47,6 +47,7 @@ class Simulator:
         self.rl_vehicle = None 
         self.set_up_rlVehicle()
         self.evasion_swap=False
+        self.fault_car_spawned = False
 
 
         # Generate vehicle counts for vehicle ID assignment
@@ -346,8 +347,9 @@ class Simulator:
         faultCar=False
  
 
-        if self.timestep == self.random_count:
+        if self.timestep >= self.random_count and not self.fault_car_spawned:
             faultCar = True
+            self.fault_car_spawned = True
 
         
         new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar,crashValues["crashOccured"])
