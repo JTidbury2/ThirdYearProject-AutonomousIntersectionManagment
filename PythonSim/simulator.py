@@ -37,6 +37,7 @@ class Simulator:
         self.gen_veh_count = 0  
         # For vehicle queues that are not placed in the simulation area for each lane, refer to the Meng2018Analysis article
         self.point_queue_table = self.init_point_queue_table()
+        self.fault_car_spawned = False
         # Vehicles in the simulation area
         self.all_veh = {
             'Nap': [],
@@ -171,8 +172,9 @@ class Simulator:
         faultCar=False
  
 
-        if self.timestep == self.random_count:
+        if self.timestep >= self.random_count and not self.fault_car_spawned:
             faultCar = True
+            self.fault_car_spawned = True
 
         
         new_veh = Vehicle(self.gen_veh_count, new_veh_param, cf_param, gen_init_v, self.timestep,faultCar,crashValues["crashOccured"])
