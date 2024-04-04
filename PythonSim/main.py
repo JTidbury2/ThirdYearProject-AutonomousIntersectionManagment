@@ -10,7 +10,7 @@ from rl_agent import AgentInference
 
 env_config = '../rl-agents/scripts/configs/IntersectionEnv/env_3way_int.json'
 agent_config = '../rl-agents/scripts/configs/IntersectionEnv/agents/DQNAgent/ego_attention_8h.json'
-model_path = '../PettingZooSim/HighwayEnv/out/ThreeWayIntersectionEnv/DQNAgent/run_20240312-173947_14944/checkpoint-final.tar'
+model_path = 'iridisResult/checkpoint-best.tar'
 rl_agent_export= AgentInference(env_config, agent_config, model_path)
 
 

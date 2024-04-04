@@ -43,6 +43,7 @@ class AgentInference(object):
         os.chdir('../PettingZooSim/HighwayEnv')
         self.env=load_environment(env_config)
         self.agent = load_agent(agent_config, self.env)  # No environment needed for inference
+        print("model_path",model_path)
         self.load_agent_model(model_path)
         self.agent.eval()
         os.chdir('../../PythonSim')

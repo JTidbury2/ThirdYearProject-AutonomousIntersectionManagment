@@ -274,6 +274,8 @@ class DresnerManager(BaseInterManager):
                 'res_id': message['res_id']
             })
         elif message["type"]== "fault":
+            if self.rl_sim_on:
+                simulator.Simulator.getInstance().rl_swap=True
             self.crash_occured(message["veh_id"])
 
     def crash_occured(self,veh_id):
