@@ -108,6 +108,7 @@ class Simulator:
                 if veh.collidedCar or veh.faultyCar:
                     continue
                 print("SIMULATOR:Vehicle ID: ", veh._id)
+                veh.evadeDirection = veh.evadeDirection if veh.evadeDirection != None else 0
                 print("SIMULATOR:Evasion Direction: ", veh.evadeDirection)
                 print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
                 temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])

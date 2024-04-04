@@ -78,6 +78,7 @@ class DresnerManager(BaseInterManager):
         self.rl_vehicle=None
         self.set_up_rlVehicle()
         self.evasion_swap=False
+        self.keys_to_remove=[]
 
     def set_up_rlVehicle(self):
         temp = np.array([0,0])
@@ -424,6 +425,7 @@ class DresnerManager(BaseInterManager):
             if self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_acc):
                 # print("INTER_MANAGER: check_evasion acc_acc, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_acc)):
+                    self.keys_to_remove=[]
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
                         'ex_lane': ex_lane,
@@ -433,10 +435,12 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_acc  # Include the calculated exit time
                     }
                 else:
+                    self.del_keys(message['veh_id'])
                     print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
                 # print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
                 if self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
+                    self.keys_to_remove=[]
                     return {
                         'res_id': 0,  # Todo: Generate a unique reservation ID
                         'ex_lane': ex_lane,
@@ -446,8 +450,15 @@ class DresnerManager(BaseInterManager):
                         'exit_time': exit_time_const_v   # Include the calculated exit time
                     }
                 else:
+                    self.del_keys(message['veh_id'])
                     print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion: ", message['veh_id'])
         return None
+    
+    def del_keys(self,veh_id):
+        for key in self.keys_to_remove:
+            if veh_id in self.grid_veh_values[key]:
+                del self.grid_veh_values[key][veh_id]
+        self.keys_to_remove=[]
     
     def check_evasion(self, t_start, t_end):
         # print("INTER_MANAGER: t_start",t_start)
@@ -645,6 +656,7 @@ class DresnerManager(BaseInterManager):
             if key not in self.grid_veh_values:
                 self.grid_veh_values[key]={}
             self.grid_veh_values[key][message["veh_id"]]=value
+            self.keys_to_remove.append(key)
         return True
     
 class GeneticReordering():
