@@ -147,6 +147,10 @@ class Simulator:
 
     def rl_update_pos_after_action(self):
         for veh in self.all_veh["ju"]:
+            print("SIMULATOR:Vehicle ID: ", veh._id)
+            print("SIMULATOR:Vehicle Values: ", self.veh_rl_values[veh._id])
+            print("SIMULATOR:Vehicle Obs: ", self.veh_rl_obs[veh._id])
+            print("SIMULATOR:Vehicle Action: ", self.veh_rl_actions[veh._id])
             if veh.collidedCar:
                 continue
             temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])

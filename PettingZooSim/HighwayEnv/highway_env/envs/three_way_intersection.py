@@ -43,7 +43,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "action": {
                     "type": "DiscreteAction",
                     "actions_per_axis": 10,
-                    "acceleration_range": [-8.0, 8.0],
+                    "acceleration_range": [-9.5, 5.0],
                     "steering_range": [-0.7, 0.7]
                 },
                 "actions_per_axis": 10,
@@ -206,7 +206,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     "o:"+ str(i) +":"+ str(corner),
                     "ir:"+ str(i) + ":"+  str(corner),
                     StraightLane(
-                        start, end, line_types=[c, c], priority=priority, speed_limit=10
+                        start, end, line_types=[c, c], priority=priority, speed_limit=13.4
                     ),
                 )
             # Right turn
@@ -221,7 +221,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     angle + np.radians(270),
                     line_types=[c, c],
                     priority=priority,
-                    speed_limit=10,
+                    speed_limit=13.4,
                 ),
             )
             # Left turn
@@ -244,7 +244,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     clockwise=False,
                     line_types=[c, c],
                     priority=priority - 1,
-                    speed_limit=10,
+                    speed_limit=13.4,
                 ),
             )
             # Straight
@@ -254,7 +254,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "ir:"+ "1:"+str(corner),
                 "il:"+ "1:"+ str((corner + 2) % 4),
                 StraightLane(
-                    start, end, line_types=[c, c], priority=priority, speed_limit=10
+                    start, end, line_types=[c, c], priority=priority, speed_limit=13.4
                 ),
             )
             # Exit
@@ -281,7 +281,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                     "il:" + str(i) + ":" + str((corner - 1) % 4),  # Source lane identifier
                     "o:" + str(i) + ":" + str((corner - 1) % 4),  # Destination lane identifier
                     StraightLane(
-                        start, end, line_types=[c, c], priority=priority, speed_limit=10
+                        start, end, line_types=[c, c], priority=priority, speed_limit=13.4
                     ),
                 )
 
@@ -350,7 +350,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             max_speed = ego_lane.speed_limit
 
             # Generate a random speed between 0 and max_speed
-            random_speed = self.np_random.uniform(4, 14)
+            random_speed = self.np_random.uniform(4, 13)
 
             # Generate a random heading in radians. Assuming full 360-degree freedom, 0 to 2*pi radians.
             random_heading = self.np_random.uniform(0, 2 * np.pi)
@@ -412,7 +412,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             longitudinal=(
                 longitudinal + 5 + self.np_random.normal() * position_deviation
             ),
-            speed=8 + self.np_random.normal() * speed_deviation,
+            speed=5 + self.np_random.normal() * speed_deviation,
         )
         for v in self.road.vehicles:
             if np.linalg.norm(v.position - vehicle.position) < 15:
