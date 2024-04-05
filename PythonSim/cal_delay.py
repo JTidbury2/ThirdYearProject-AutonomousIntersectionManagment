@@ -5,7 +5,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-offsetArray = [[0.34,0.2354,1.4054,0.05],[0.235,0.24,0.34,-0.056],[0.35,0.25,0.35,0.08],[0,0,0,0]]
+offsetArray = [[-1.063,-1.232,-1.083,-1.271],[-1.063,-1.241,-1.086,-1.273],[-1.063,-1.191,-1.072,-1.27],[0,0,0,0]]
 
 def cal_metrics(fname):
     file = open(fname)
@@ -78,7 +78,7 @@ def cal_metrics(fname):
     metrics['actual_total_flow'] = actual_total_flow
 
     # Calculate delays
-    # print("veh_info_table", veh_info_table)
+    print("veh_info_table", veh_info_table)
     # real time
     actual_time = (veh_info_table[:, 2] - veh_info_table[:, 0]) * veh_dt
     #Ideal passing time, ignore intersections and other vehicles, and pass at a constant speed
@@ -86,7 +86,7 @@ def cal_metrics(fname):
     total_distance = arm_len * 2 + veh_info_table[:, 1]
 
 
-    # print("total_distance", total_distance)
+    print("total_distance", total_distance)
     ideal_time = []
     for index,value in enumerate(total_distance):
         average_max_v = min(random_veh_param[int(veh_info_table[index][5])]["max_v"], arm_v_lim)
@@ -130,13 +130,13 @@ def cal_metrics(fname):
 
 
     # ideal_time = (arm_len * 2 + veh_info_table[:, 1]) / cf_param['v0']
-    # print("ideal_time", ideal_time)
-    # print("actual_time", actual_time)
-    # print("type/way pairng", [(int(veh_info_table[index][4]),int(veh_info_table[index][5])) for index in range(len(veh_info_table))])
+    print("ideal_time", ideal_time)
+    print("actual_time", actual_time)
+    print("type/way pairng", [(int(veh_info_table[index][4]),int(veh_info_table[index][5])) for index in range(len(veh_info_table))])
 
     delay = actual_time - ideal_time #round of stuff that i found
-    delay = [max(0, x) for x in delay]
-    # print("Delay", delay)
+    # delay = [max(0, x) for x in delay]  #TODO change
+    print("Delay", delay)
     metrics['avg_delay'] = np.mean(delay)
     metrics['max_delay'] = np.max(delay)
     metrics['longest_crash_list'] = longest_crash_list  
