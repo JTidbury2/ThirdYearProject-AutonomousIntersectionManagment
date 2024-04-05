@@ -5,7 +5,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-offsetArray = [[0.34,0.2354,1.4054,0.05],[0.235,0.24,0.34,-0.056],[0.35,0.25,0.35,0.08],[0,0,0,0]]
+offsetArray = [[-1.063,-1.232,-1.083,-1.271],[-1.063,-1.241,-1.086,-1.273],[-1.063,-1.191,-1.072,-1.27],[0,0,0,0]]
 
 def cal_metrics(fname):
     file = open(fname)
