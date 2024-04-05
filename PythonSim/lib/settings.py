@@ -15,15 +15,15 @@ turn_radius = 5 # The American Urban Street Design Guidelines require that the c
 arm_len = 100
 NS_lane_count = 3
 EW_lane_count = 3
-arm_v_lim =  16.66  # 60 km/h
-inter_v_lim = 16.66 # Speed ​​limit in intersection area, Human/Dresner/Xu will all use it
+arm_v_lim =  13.4 # 60 km/h
+inter_v_lim = 13.4 # Speed ​​limit in intersection area, Human/Dresner/Xu will all use it
 ########################## Vehicle parameter settings##################### #####
 veh_param = {
     'veh_wid': 2,
     'veh_len': 5,
     'veh_len_front': 1, # The distance from the front bumper to the front axle
     'max_v': 33,
-    'max_acc': 3,
+    'max_acc': 4,
     'max_dec': 4,
     'ap_arm': None,
     'ap_lane': None,
@@ -50,7 +50,7 @@ veh_param_2={
     'veh_len': 5.5,
     'veh_len_front': 1.2, # The distance from the front bumper to the front axle
     'max_v': 30,
-    'max_acc': 2,
+    'max_acc': 3,
     'max_dec': 3,
     'ap_arm': None,
     'ap_lane': None,
