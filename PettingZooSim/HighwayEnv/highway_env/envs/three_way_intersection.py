@@ -58,7 +58,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
                 "collision_reward": -15,
                 "high_speed_reward": 0.5,
                 "arrived_reward": 0,
-                "reward_speed_range": [-2, 2],
+                "reward_speed_range": [-0.5, 0.5],
                 "normalize_reward": True,
                 "offroad_terminal": True,
                 "alive_reward":2
@@ -412,7 +412,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             longitudinal=(
                 longitudinal + 5 + self.np_random.normal() * position_deviation
             ),
-            speed=5 + self.np_random.normal() * speed_deviation,
+            speed=9 + self.np_random.normal() * speed_deviation,
         )
         for v in self.road.vehicles:
             if np.linalg.norm(v.position - vehicle.position) < 15:
