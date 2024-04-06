@@ -98,9 +98,9 @@ class Simulator:
                     continue
                 
             self.rl_get_obs()
-            # print("Obs: ",self.veh_rl_obs)
+            print("Obs: ",self.veh_rl_obs)
             self.rl_get_action()
-            # print("Actions: ",self.veh_rl_actions)
+            print("Actions: ",self.veh_rl_actions)
             self.rl_update_pos_after_action()
             # print("Updated Values: ",self.veh_rl_updated_values)
 
@@ -147,6 +147,7 @@ class Simulator:
 
     def rl_update_pos_after_action(self):
         for veh in self.all_veh["ju"]:
+            
             print("SIMULATOR:Vehicle ID: ", veh._id)
             print("SIMULATOR:Vehicle Values: ", self.veh_rl_values[veh._id])
             print("SIMULATOR:Vehicle Obs: ", self.veh_rl_obs[veh._id])
@@ -236,6 +237,8 @@ class Simulator:
             #insert code here 
             self.sim_over=True
 
+        self.check_for_prePlanRlSwap()
+
 
 
     def switch_to_rl(self):
@@ -261,7 +264,12 @@ class Simulator:
 
         if self.crash_count>0:
             print(crashed_vehicles)
-            pass
+            
+            
+    def check_for_prePlanRlSwap(self):
+        if self.timestep >= self.crash_time-90:
+            self.rl_swap=True
+            self.evasion_swap=False
 
     def check_for_finish(self):
         if self.timestep >= self.crash_time:

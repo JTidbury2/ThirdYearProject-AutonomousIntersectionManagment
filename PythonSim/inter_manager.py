@@ -8,6 +8,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 from rl_agent import VehicleInterface
+import random
 
 
 class BaseInterManager:
@@ -79,7 +80,7 @@ class DresnerManager(BaseInterManager):
         self.set_up_rlVehicle()
         self.evasion_swap=False
         self.keys_to_remove=[]
-        self.rl_sim_on=True #TODO FLag for RL simulation
+        self.rl_sim_on=False #TODO FLag for RL simulation
 
     def set_up_rlVehicle(self):
         temp = np.array([0,0])
@@ -474,18 +475,30 @@ class DresnerManager(BaseInterManager):
         for t in range(round(t_start), round(t_end)):
             # print("t",t)  
             # print("grid_veh_values[t].items()",self.grid_veh_values[t].items())  
-            for veh , value in self.grid_veh_values[t].items():
+            random_pass=random.random()
+            if ((t-round(t_start))-(round(t_end)-round(t_start))>random_pass):
+                
+                for veh, value in self.grid.veh_values[t].items():
+                    temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
+                    self.evasion_plan_DB[(veh,t)]={}
+                    for vehicle , values in temp.items():
+                        self.evasion_plan_DB[values["id"]]=0
+            else:
+                for veh , value in self.grid_veh_values[t].items():
 
-                self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1) #TODO change this to 0.1
-                self.evasion_plan_DB[(veh,t)]={}
-                self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
-                temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
-                if self.dfs_evasion(veh,t,temp):
-                    pass
-                else:
+                    self.evasion_plan_grid_db[(veh,t)]= DresnerResGrid(0.1) #TODO change this to 0.1
+                    self.evasion_plan_DB[(veh,t)]={}
+                    self.check_cells_evasion(veh,t,self.grid_veh_values[t][veh]["position"][0],self.grid_veh_values[t][veh]["position"][1],self.grid_veh_values[t][veh]["speed"],self.grid_veh_values[t][veh]["heading"],{'acceleration': -10, 'steering': 0},self.grid_veh_values[t][veh]["veh_wid"],self.grid_veh_values[t][veh]["veh_len"],self.grid_veh_values[t][veh]["veh_len_front"],self.grid_veh_values[t][veh]["id"])
+                    temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
+                    
 
-                    return False
-                del self.evasion_plan_grid_db[(veh,t)]
+                    if self.dfs_evasion(veh,t,temp):
+                        pass
+                    else:
+                        del self.evasion_plan_DB[(veh,t)]
+                        return False
+                    del self.evasion_plan_grid_db[(veh,t)]
+                
             
         return True
 

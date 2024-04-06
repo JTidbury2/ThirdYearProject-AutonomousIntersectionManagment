@@ -168,6 +168,7 @@ class DresnerVehicle(BaseVehicle):
         self.evasion=False
         self.evadeDirection=None
         self.controlled=False
+        
 
     def update_vehicle_values(self, x,y,vx,vy,cosh,sinh,heading,speed):
         self.rl_x = x
