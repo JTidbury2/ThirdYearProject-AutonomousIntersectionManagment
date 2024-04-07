@@ -87,10 +87,21 @@ class Simulator:
         # print("-------------------")
         # print(self.timestep)
         # print("-------------------")
+        tempSet = set()
         for veh in self.all_veh["ju"]:
+            tempSet.add(veh._id)
             if not veh.collidedCar and not veh.controlled:
                 self.veh_rl_values[veh._id] = veh.get_veh_rl_values()
-        # print("Rl_values: ", self.veh_rl_values)
+
+        for key in list(self.veh_rl_values.keys()):
+            if key not in tempSet:
+                del self.veh_rl_values[key]
+
+
+        
+
+        
+        print("Rl_values: ", self.veh_rl_values)
         if self.rl_swap:
             for veh in self.all_veh["ju"]:
                 veh.controlled = True
@@ -105,9 +116,10 @@ class Simulator:
             # print("Updated Values: ",self.veh_rl_updated_values)
 
     def evasion_update(self):
+        # print("Evasion swap: ", self.evasion_swap)
         if self.evasion_swap:
             for veh in self.all_veh["ju"]:
-                veh.controlled = True
+                # veh.controlled = True
                 if veh.collidedCar or veh.faultyCar:
                     continue
                 print("SIMULATOR:Vehicle ID: ", veh._id)
@@ -148,10 +160,11 @@ class Simulator:
     def rl_update_pos_after_action(self):
         for veh in self.all_veh["ju"]:
             
-            print("SIMULATOR:Vehicle ID: ", veh._id)
-            print("SIMULATOR:Vehicle Values: ", self.veh_rl_values[veh._id])
-            print("SIMULATOR:Vehicle Obs: ", self.veh_rl_obs[veh._id])
-            print("SIMULATOR:Vehicle Action: ", self.veh_rl_actions[veh._id])
+            # print("SIMULATOR:Vehicle ID: ", veh._id)
+            # print("SIMULATOR:Vehicle Values: ", self.veh_rl_values[veh._id])
+            # print("SIMULATOR:Vehicle stored values: ",veh.rl_x, veh.rl_y, veh.rl_vx, veh.rl_vy, veh.rl_cosh, veh.rl_sinh, veh.heading, veh.speed)
+            # print("SIMULATOR:Vehicle Obs: ", self.veh_rl_obs[veh._id])
+            # print("SIMULATOR:Vehicle Action: ", self.veh_rl_actions[veh._id])
             if veh.collidedCar:
                 continue
             temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
@@ -267,9 +280,13 @@ class Simulator:
             
             
     def check_for_prePlanRlSwap(self):
-        if self.timestep >= self.crash_time-90:
+
+        if self.timestep >= self.crash_time-99:
+            # print("Preplan RL Swap")
             self.rl_swap=True
             self.evasion_swap=False
+            inter_manager.evasion_swap=False    
+            # print("Evasion swap: ", self.evasion_swap)
 
     def check_for_finish(self):
         if self.timestep >= self.crash_time:

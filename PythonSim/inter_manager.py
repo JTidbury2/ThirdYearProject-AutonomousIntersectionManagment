@@ -192,7 +192,7 @@ class DresnerManager(BaseInterManager):
         logging.debug('crashed_Vehicle_ID:%s', crashed_Vehicle_ID)
         return crashed_Vehicle_ID
     
-    def rl_check_for_collision(self,all_vehicles,rl=False):
+    def rl_check_for_collision(self,all_vehicles):
         crashed_Vehicle_ID=[]
         
         #self.crash_happened = True # TODO CHange this
@@ -202,6 +202,7 @@ class DresnerManager(BaseInterManager):
 
                 for idx in range(len(i)):
                     current_cell = self.get_grid_cells()[i[idx], j[idx], 0]  # Access the current cell
+                    
                     
                     if current_cell != -1 and current_cell != veh._id:  # If the cell is occupied by another vehicle
                         if current_cell not in crashed_Vehicle_ID:  # If the occupying vehicle is not already in the list
@@ -476,13 +477,23 @@ class DresnerManager(BaseInterManager):
             # print("t",t)  
             # print("grid_veh_values[t].items()",self.grid_veh_values[t].items())  
             random_pass=random.random()
-            if ((t-round(t_start))-(round(t_end)-round(t_start))>random_pass):
-                
-                for veh, value in self.grid.veh_values[t].items():
-                    temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
-                    self.evasion_plan_DB[(veh,t)]={}
-                    for vehicle , values in temp.items():
-                        self.evasion_plan_DB[values["id"]]=0
+            # print("t",t)
+            # print("round(T_Start)",round(t_start))
+            # print("round(t_end)",round(t_end))
+            # print("t-round(t_start))-(round(t_end)-round(t_start))",(t-round(t_start))-(round(t_end)-round(t_start)))
+            # print("random_pass",random_pass)
+            if ((t-round(t_start))/(round(t_end)-round(t_start))>random_pass):
+                # print("Cheeky pass allowed")
+                for t in range(round(t_start), round(t_end)):
+                    for veh, value in self.grid_veh_values[t].items():
+                        temp= {k: v for k, v in self.grid_veh_values[t].items() if k != value["id"]}
+                        tempDict={}
+                        for vehicle , values in temp.items():
+                            tempDict[values["id"]]=0
+
+                        self.evasion_plan_DB[(veh,t)]=tempDict
+
+                return True
             else:
                 for veh , value in self.grid_veh_values[t].items():
 
