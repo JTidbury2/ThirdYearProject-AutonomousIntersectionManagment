@@ -149,8 +149,8 @@ class DresnerManager(BaseInterManager):
     def rl_get_grid_location(self,veh):
         x = veh.rl_x
         y = veh.rl_y
-        cosh = veh.rl_cosh
-        sinh = veh.rl_sinh
+        cosh = math.cos(veh.heading-(math.pi/2))
+        sinh = math.cos(veh.heading - (math.pi /2))
 
         # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
         veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \

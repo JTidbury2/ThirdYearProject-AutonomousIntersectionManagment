@@ -218,6 +218,7 @@ class Simulator:
             if veh.collidedCar:
                 continue
             actions= self.rl_agent.get_agent_action(self.veh_rl_obs[veh._id])
+            actions[0]["acceleration"] = min(actions[0]["acceleration"], -7)
             self.veh_rl_actions[veh._id] = actions
 
 
