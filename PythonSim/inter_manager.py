@@ -150,7 +150,7 @@ class DresnerManager(BaseInterManager):
         x = veh.rl_x
         y = veh.rl_y
         cosh = math.cos(veh.heading-(math.pi/2))
-        sinh = math.cos(veh.heading - (math.pi /2))
+        sinh = math.sin(veh.heading - (math.pi /2))
 
         # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
         veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \
@@ -196,6 +196,7 @@ class DresnerManager(BaseInterManager):
         crashed_Vehicle_ID=[]
         
         #self.crash_happened = True # TODO CHange this
+        print("SElf.crash_happened",self.crash_happened)
         if self.crash_happened:
             for veh in all_vehicles:
                 i,j = self.rl_get_grid_location(veh)

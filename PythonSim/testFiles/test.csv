@@ -1,0 +1,7 @@
+time,vehicle_id,zone,x,direction,type
+0,1,ap,0,0,1
+10,1,ju,5.5,0,1
+20,1,ex,200.5,0,1
+0,2,ap,0,0,2
+15,2,ju,6,0,2
+25,2,ex,200,0,2
