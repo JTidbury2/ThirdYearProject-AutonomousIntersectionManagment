@@ -180,6 +180,7 @@ class Evaluation(object):
             pass
 
         # Step the environment
+        print("Actions:",actions)
         previous_observation, action = self.observation, actions[0]
         transition = self.wrapped_env.step(action)
         self.observation, reward, done, truncated, info = transition

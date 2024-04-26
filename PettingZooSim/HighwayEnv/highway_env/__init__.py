@@ -68,7 +68,7 @@ def register_highway_envs():
 
     register(
         id="three-intersection-multi-agent-v0",
-        entry_point="highway_env.envs:MultiAgentThreeWayIntersectionEnv",
+        entry_point="highway_env.envs:ThreeWayIntersectionEnv",
     )    
     # lane_keeping_env.py
     register(

@@ -24,31 +24,35 @@ class ThreeWayIntersectionEnv(AbstractEnv):
         config.update(
             {
                 "observation": {
-                    "type": "Kinematics",
-                    "vehicles_count": 15,
-                    "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
-                    "features_range": {
-                        "x": [-100, 100],
-                        "y": [-100, 100],
-                        "vx": [-20, 20],
-                        "vy": [-20, 20],
-                    },
-                    "absolute": True,
-                    "flatten": False,
-                    "see_behind": True,
-                    "observe_intentions": False,
-                    "order": "sorted",
-                    "normalize": False, 
+                    "type": "MultiAgentObservation",
+                    "observation_config":
+                        {"type": "Kinematics",
+                        "vehicles_count": 15,
+                        "features": ["presence", "x", "y", "vx", "vy", "cos_h", "sin_h"],
+                        "features_range": {
+                            "x": [-100, 100],
+                            "y": [-100, 100],
+                            "vx": [-20, 20],
+                            "vy": [-20, 20],
+                        },
+                        "absolute": True,
+                        "flatten": False,
+                        "see_behind": True,
+                        "observe_intentions": False,
+                        "order": "sorted",
+                        "normalize": False, }
                 },
                 "action": {
-                    "type": "DiscreteAction",
-                    "actions_per_axis": 10,
-                    "acceleration_range": [-9.5, 5.0],
-                    "steering_range": [-0.7, 0.7]
-                },
+                    "type": "MultiAgentAction",
+                    "action_config": {
+                        "type": "DiscreteAction",
+                        "actions_per_axis": 10,
+                        "acceleration_range": [-9.5, 5.0],
+                        "steering_range": [-0.7, 0.7]
+                }},
                 "actions_per_axis": 10,
                 "duration": 26,  # [s]
-                "controlled_vehicles": 1,
+                "controlled_vehicles": 3,
                 "initial_vehicle_count":60,
                 "spawn_probability": 1,
                 "screen_width": 1200,
@@ -115,12 +119,12 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             print("Terminated, crashed",self.time)
         elif (all(self.has_arrived(vehicle) for vehicle in self.controlled_vehicles)):
             print("Terminated, arrived",self.time)
-        elif (self.config["offroad_terminal"] and not self.vehicle.on_road):
+        elif (self.config["offroad_terminal"] and not all(vehicle.on_road for vehicle in self.controlled_vehicles)):
             print("Terminated, offroad",self.time)
 
         return (
             any(vehicle.crashed for vehicle in self.controlled_vehicles)
-            or (self.config["offroad_terminal"] and not self.vehicle.on_road)
+            or (self.config["offroad_terminal"] and not all(vehicle.on_road for vehicle in self.controlled_vehicles))
         )
 
     def _agent_is_terminal(self, vehicle: Vehicle) -> bool:
@@ -328,7 +332,9 @@ class ThreeWayIntersectionEnv(AbstractEnv):
 
         # Controlled vehicles
         self.controlled_vehicles = []
+        print("Controlled vehicles", self.config["controlled_vehicles"])
         for ego_id in range(0, self.config["controlled_vehicles"]):
+
             # 0 if left, 1 if middle, 2 if right
             right_middle_left = self.np_random.choice(range(3))
             if right_middle_left == 0:  # Left lane
@@ -350,21 +356,29 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             max_speed = ego_lane.speed_limit
 
             # Generate a random speed between 0 and max_speed
-            random_speed = self.np_random.uniform(4, 13)
+            random_speed = self.np_random.uniform(3, 8)
 
             # Generate a random heading in radians. Assuming full 360-degree freedom, 0 to 2*pi radians.
             random_heading = self.np_random.uniform(0, 2 * np.pi)
-            
-            random_x = self.np_random.uniform(-13, 13)
+            flag=True
+            while(flag):
+                random_x = self.np_random.uniform(-15, 15)
 
-            random_y = self.np_random.uniform(-13, 13)
-            ego_vehicle = self.action_type.vehicle_class(
-                self.road,
-                [random_x,random_y],
-                speed=random_speed,
-                heading=random_heading,
-                controlled=True
-            )
+                random_y = self.np_random.uniform(-15, 15)
+                ego_vehicle = self.action_type.vehicle_class(
+                    self.road,
+                    [random_x,random_y],
+                    speed=random_speed,
+                    heading=random_heading,
+                    controlled=True
+                )
+
+                for v in self.road.vehicles:  # Prevent early collisions
+                    if not (np.linalg.norm(v.position - ego_vehicle.position) < 3):
+                        flag=False
+                        
+
+
             try:
                 ego_vehicle.plan_route_to(destination)
                 ego_vehicle.speed_index = ego_vehicle.speed_to_index(
@@ -380,7 +394,7 @@ class ThreeWayIntersectionEnv(AbstractEnv):
             self.controlled_vehicles.append(ego_vehicle)
             for v in self.road.vehicles:  # Prevent early collisions
                 if (
-                    v is not ego_vehicle
+                    v is not ego_vehicle and v not in self.controlled_vehicles
                     and np.linalg.norm(v.position - ego_vehicle.position) < 20
                 ):
                     self.road.vehicles.remove(v)

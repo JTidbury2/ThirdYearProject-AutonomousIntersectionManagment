@@ -109,6 +109,7 @@ class ContinuousAction(ActionType):
         :param clip: clip action to the defined range
         """
         super().__init__(env)
+        print("Accelraton rannge",acceleration_range)
         self.acceleration_range = (
             acceleration_range if acceleration_range else self.ACCELERATION_RANGE
         )
@@ -157,6 +158,7 @@ class ContinuousAction(ActionType):
             }
 
     def act(self, action: np.ndarray) -> None:
+        print("Get action", self.get_action(action) )
         self.controlled_vehicle.act(self.get_action(action))
         self.last_action = action
 
@@ -199,6 +201,8 @@ class DiscreteAction(ContinuousAction):
         cont_space = super().space()
         axes = np.linspace(cont_space.low, cont_space.high, self.actions_per_axis).T
         all_actions = list(itertools.product(*axes))
+        print("all actions,", all_actions)
+        print("All actions", all_actions[action])
         
         super().act(all_actions[action])
 
@@ -334,6 +338,7 @@ class MultiAgentAction(ActionType):
         return action_factory(self.env, self.action_config).vehicle_class
 
     def act(self, action: Action) -> None:
+        print("Action: ", action)
         assert isinstance(action, tuple)
         for agent_action, action_type in zip(action, self.agents_action_types):
             action_type.act(agent_action)
