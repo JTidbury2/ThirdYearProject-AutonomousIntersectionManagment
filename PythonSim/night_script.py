@@ -40,26 +40,36 @@ def main(num_runs, num_scenarios):
     all_results = {}
 
     for scenario in num_scenarios:
-        simulation_command = f'python main.py Dresner {scenario} 0'
+        simulation_command = f'python main.py Dresner {scenario} 1'
         print(f"Running simulation for scenario: {scenario}")
 
-        # Initialize total metrics
+        # Initialize total metrics and successful run count
         total_metrics = {
             'crash_list_length': 0,
             'avg_delay': 0,
             'max_delay': 0,
             'actual_total_flow': 0,
         }
+        successful_runs = 0
 
         for _ in range(num_runs):
-            metrics = run_simulation(simulation_command)
-            for key in total_metrics:
-                total_metrics[key] += metrics[key]
+            try:
+                metrics = run_simulation(simulation_command)
+                for key in total_metrics:
+                    total_metrics[key] += metrics[key]
+                successful_runs += 1
+            except Exception as e:
+                print(f"Error during simulation for scenario {scenario}: {e}")
+
+        # Ensure there is at least one successful run to avoid division by zero
+        if successful_runs == 0:
+            print(f"No successful runs for scenario {scenario}. Skipping average calculations.")
+            continue
 
         # Calculate and store averages
         scenario_results = {}
         for key, total in total_metrics.items():
-            average = total / num_runs
+            average = total / successful_runs  # Use successful_runs instead of num_runs
             scenario_results[key] = average
 
         all_results[scenario] = scenario_results
@@ -81,7 +91,7 @@ def main(num_runs, num_scenarios):
             f.write("\n")
 
 if __name__ == '__main__':
-    number_of_runs = 100  # Specify the number of times you want to run the simulation
-    num_scenarios = [500,1000, 2500, 5000, 7500, 10000, 15000, 20000]
+    number_of_runs = 20  # Specify the number of times you want to run the simulation
+    num_scenarios = [1000, 2000, 3000, 4000]
 
     main(number_of_runs, num_scenarios)
