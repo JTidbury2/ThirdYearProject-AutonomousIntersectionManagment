@@ -69,7 +69,7 @@ class DresnerManager(BaseInterManager):
     def __init__(self):
         super().__init__()
         self.res_grid = DresnerResGrid(0.1) # Write to settings?
-        self.running_grid = DresnerResGrid(0.05)
+        self.running_grid = DresnerResGrid(0.25)
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
@@ -150,7 +150,7 @@ class DresnerManager(BaseInterManager):
         x = veh.rl_x
         y = veh.rl_y
         cosh = math.cos(veh.heading-(math.pi/2))
-        sinh = math.cos(veh.heading - (math.pi /2))
+        sinh = math.sin(veh.heading - (math.pi /2))
 
         # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
         veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \
@@ -445,7 +445,7 @@ class DresnerManager(BaseInterManager):
                     }
                 else:
                     self.del_keys(message['veh_id'])
-                    print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
+                    # print("INTER_MANAGER:-------------------------------------Rejected due to failed evasion: ", message['veh_id'])
             elif self.check_cells_stepwise(message, ju_track, ju_shape_end_x, ex_arm, ex_lane, acc_const_v):
                 # print("INTER_MANAGER: check_evasion acc_const_v, veh_id",message['veh_id'])
                 if self.rl_sim_on or self.check_evasion(message['arr_t'], message['arr_t'] + int(exit_time_const_v)):
@@ -460,7 +460,7 @@ class DresnerManager(BaseInterManager):
                     }
                 else:
                     self.del_keys(message['veh_id'])
-                    print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion: ", message['veh_id'])
+                    # print("INTER_MANAGER:----------------------------------------Rejected due to failed evasion: ", message['veh_id'])
         return None
     
     def del_keys(self,veh_id):

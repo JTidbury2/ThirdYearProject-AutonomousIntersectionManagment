@@ -209,7 +209,6 @@ class KinematicObservation(ObservationType):
         For now, assume that the road is straight along the x axis.
         :param Dataframe df: observation data
         """
-        print("Normalizing")
         if not self.features_range:
             side_lanes = self.env.road.network.all_side_lanes(
                 self.observer_vehicle.lane_index
@@ -245,8 +244,7 @@ class KinematicObservation(ObservationType):
             sort=self.order == "sorted",
             vehicles_only=not self.include_obstacles,
         )
-        print("Absolute", self.absolute)
-        print("Cheicvle count", self.vehicles_count)
+
         if close_vehicles:
             origin = self.observer_vehicle if not self.absolute else None
             vehicles_df = pd.DataFrame.from_records(
@@ -256,6 +254,8 @@ class KinematicObservation(ObservationType):
                 ]
             )
             df = pd.concat([df, vehicles_df], ignore_index=True)
+            
+
 
         df = df[self.features]
 
@@ -275,6 +275,7 @@ class KinematicObservation(ObservationType):
         #     print("Shuffled")
         #     self.env.np_random.shuffle(obs[1:])
         # Flatten
+
         return obs.astype(self.space().dtype)
 
 
