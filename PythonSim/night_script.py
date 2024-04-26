@@ -81,7 +81,7 @@ def main(num_runs, num_scenarios):
             f.write("\n")
 
 if __name__ == '__main__':
-    number_of_runs = 100  # Specify the number of times you want to run the simulation
-    num_scenarios = [500,1000, 2500, 5000, 7500, 10000, 15000, 20000]
+    number_of_runs = 30  # Specify the number of times you want to run the simulation
+    num_scenarios = [1000,2000, 3000,4000,5000,6000,7000,8000,9000,10000]
 
     main(number_of_runs, num_scenarios)
