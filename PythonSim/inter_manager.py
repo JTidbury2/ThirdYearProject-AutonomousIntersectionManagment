@@ -68,7 +68,7 @@ class DresnerManager(BaseInterManager):
     def __init__(self):
         super().__init__()
         self.res_grid = DresnerResGrid(0.1) # Write to settings?
-        self.running_grid = DresnerResGrid(0.05)
+        self.running_grid = DresnerResGrid(0.25)
         self.ex_lane_table = self.gen_ex_lane_table()
         self.res_registery = {}
         self.crash_happened = False
@@ -148,8 +148,8 @@ class DresnerManager(BaseInterManager):
     def rl_get_grid_location(self,veh):
         x = veh.rl_x
         y = veh.rl_y
-        cosh = veh.rl_cosh
-        sinh = veh.rl_sinh
+        cosh = math.cos(veh.heading-(math.pi/2))
+        sinh = math.sin(veh.heading - (math.pi /2))
 
         # Calculate the xy coordinates of the vehicle's dots in the logical coordinate system (first rotate, then place in xy)
         veh_dots_x, veh_dots_y = self.gen_veh_dots(veh.veh_wid, veh.veh_len, veh.veh_len_front, \

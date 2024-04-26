@@ -103,6 +103,10 @@ class Simulator:
             # print("Actions: ",self.veh_rl_actions)
             self.rl_update_pos_after_action()
             # print("Updated Values: ",self.veh_rl_updated_values)
+            
+    def scale_value(self,x, old_min, old_max, new_min, new_max):
+        # Perform the linear scaling transformation
+        return (new_max - new_min) * (x - old_min) / (old_max - old_min) + new_min
 
     def evasion_update(self):
         if self.evasion_swap:
@@ -110,10 +114,10 @@ class Simulator:
                 veh.controlled = True
                 if veh.collidedCar or veh.faultyCar:
                     continue
-                print("SIMULATOR:Vehicle ID: ", veh._id)
+                # print("SIMULATOR:Vehicle ID: ", veh._id)
                 veh.evadeDirection = veh.evadeDirection if veh.evadeDirection != None else 0
-                print("SIMULATOR:Evasion Direction: ", veh.evadeDirection)
-                print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
+                # print("SIMULATOR:Evasion Direction: ", veh.evadeDirection)
+                # print("SIMULATOR:veh_rl_values: ", self.veh_rl_values[veh._id])
                 temp= np.array([self.veh_rl_values[veh._id]["x"],self.veh_rl_values[veh._id]["y"]])
                 self.rl_vehicle.update_vehicle_values(temp, self.veh_rl_values[veh._id]["speed"], self.veh_rl_values[veh._id]["heading"] % (2 * math.pi))
                 self.veh_rl_updated_values[veh._id] = self.rl_vehicle.get_state([{"steering": veh.evadeDirection, "acceleration": -10}])
@@ -180,13 +184,17 @@ class Simulator:
             sorted_veh = sorted(self.all_veh["ju"], key=lambda veh: self.get_distance(veh.rl_x, veh.rl_y, ego_veh.rl_x, ego_veh.rl_y))
             count=0
             for veh in sorted_veh:
-                if count < self.rl_OBS_COUNT and not veh.collidedCar:
+                if count < self.rl_OBS_COUNT :
                     veh_rl_values = self.veh_rl_values[veh._id]
-                    obs.append([veh_rl_values["presence"], veh_rl_values["x"], veh_rl_values["y"], veh_rl_values["vx"], veh_rl_values["vy"], veh_rl_values["cosh"], veh_rl_values["sinh"]])
+                    temp_x = self.scale_value(veh_rl_values["x"],-100,100,-1,1)
+                    temp_y = self.scale_value(veh_rl_values["y"],-100,100,-1,1)
+                    temp_vx = self.scale_value(veh_rl_values["vx"],-20,20,-1,1)
+                    temp_vy = self.scale_value(veh_rl_values["vy"],-20,20,-1,1)
+                    obs.append([veh_rl_values["presence"], temp_x, temp_y, temp_vx, temp_vy, veh_rl_values["cosh"], veh_rl_values["sinh"]])
                     count+=1
                 else:
                     break
-
+ 
             while count < self.rl_OBS_COUNT:
                 obs.append([0] * len(obs[0]))
                 count+=1
@@ -204,6 +212,7 @@ class Simulator:
             if veh.collidedCar:
                 continue
             actions= self.rl_agent.get_agent_action(self.veh_rl_obs[veh._id])
+            actions[0]["acceleration"] = min(actions[0]["acceleration"], -8.5)
             self.veh_rl_actions[veh._id] = actions
 
 
@@ -255,7 +264,7 @@ class Simulator:
         self.crash_count= len(crashed_vehicles)
 
         if inter_manager.check_for_collision_noCars() and self.crash_time==4000:
-            self.crash_time=self.timestep+100
+            self.crash_time=self.timestep+50
 
 
 
