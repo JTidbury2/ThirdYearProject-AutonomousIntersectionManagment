@@ -216,7 +216,7 @@ class DresnerVehicle(BaseVehicle):
                     'max_acc': self.max_acc,
                     'max_dec': self.max_dec
                 })
-            if self.reservation and not self.crashOccured :
+            if self.reservation :
                 # If the reservation is successful, the acceleration will be executed according to the previously calculated plan.
                 for t, a in self.ap_acc_profile:
                     if self.timestep >= t:
@@ -283,6 +283,7 @@ class DresnerVehicle(BaseVehicle):
             self.crashOccured=True
             if self.zone == 'ju':  # Check if the vehicle is in the junction zone
                 # Set the vehicle's acceleration to the maximum safe deceleration rate
+                print("Max dec",self.max_dec)
                 self.inst_a = -self.max_dec
                 # Optionally, log this event or take additional actions as necessary
                 logging.info(f"Vehicle {self._id} stopping at max deceleration rate due to allStop broadcast.")
