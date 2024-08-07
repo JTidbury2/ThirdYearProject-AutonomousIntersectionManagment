@@ -1,5 +1,5 @@
 # Third Year Project
-This is the code that I developed throughout my third year project, the pdf of which is present in this repo.
+This is the code that I developed throughout my third year project, the pdf of which is present upon request.
 
 `Enhancing Resilience in Multiagent Approaches to Autonomous Intersection Management`
 
